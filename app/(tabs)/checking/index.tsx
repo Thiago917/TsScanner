@@ -14,7 +14,6 @@ export default function CheckingList() {
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
-    console.log('Checking orders:', orders);
 }, []);
 
   const onRefresh = async () => {
@@ -52,13 +51,13 @@ export default function CheckingList() {
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.cell}>
-                <Text style={{ fontWeight: 'bold', color: '#0abb87' }}>{item.order_code}</Text>
+                <Text style={{ fontWeight: 'bold', color: '#0abb87' }}>{!item.isReq ? item.order_code : `REQ-${item.id.toString().padStart(5, '0')}`}</Text>
               </View>
               <View style={styles.cell}>
-                <Text style={{ fontSize: 12 }}>{item.amount}</Text>
+                <Text style={{ fontSize: 12 }}>{!item.isReq ? item.amount : item.items.length}</Text>
               </View>
               <View style={styles.cell}>
-                <Link href={{ pathname: '/checking/[confereceOp]', params: { confereceOp: item.order_code } }} asChild>
+                <Link href={{ pathname: '/checking/[confereceOp]', params: { confereceOp: !item.isReq ? item.order_code : item.id } }} asChild>
                   <TouchableOpacity style={styles.actionButton}>
                     <Text style={styles.actionText}>Conferir</Text>
                   </TouchableOpacity>

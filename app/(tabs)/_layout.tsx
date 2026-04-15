@@ -1,4 +1,5 @@
 import { ProductionOrdersProvider, useOrders } from "@/contexts/ProductionOrdersContext";
+import { SalesOrdersProvider } from "@/contexts/salesOrdersContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -76,7 +77,9 @@ export default function TabsLayout() {
   return (
     <UserProvider>
       <ProductionOrdersProvider>
-        <InnerTabs />
+        <SalesOrdersProvider>
+          <InnerTabs />
+        </SalesOrdersProvider>
       </ProductionOrdersProvider>
     </UserProvider>
   );

@@ -31,6 +31,7 @@ type OrderType = {
     check_to: number;
     checking_at: string;
     checked_at: string;
+    isReq: boolean;
 }
 
 type Order = {
@@ -54,6 +55,7 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
         try {
             const response = await axios.get(`${api_url}/warehouse/list`);
             const res = response.data
+            console.log(res)
             const ordersArr: OrderType[] = [];
             const checkingArr: OrderType[] = [];
             res.forEach((item: any) => {
@@ -75,13 +77,12 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
         }
     }
 
-
     const setOrders = async (op: string, updates: Partial<OrderType>) => {
         if(!orders) return;
         const prev = orders;
- 
-        try {
             
+        try {
+
             const response = await axios.patch(`${api_url}/warehouse/update-op/${op}`, updates)
             const res = response.data
 
@@ -104,7 +105,6 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
     }
 
     useEffect(() => {
-        console.log('User detected, reloading orders...')
         loadOrders()
     }, [user])
 

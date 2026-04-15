@@ -1,10 +1,10 @@
 import { Box } from '@/components/ui/box';
-import axios from 'axios';
+import { useSalesOrders } from '@/contexts/salesOrdersContext';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const api_url = process.env.EXPO_PUBLIC_API_URL;
 
@@ -14,7 +14,8 @@ export default function Home() {
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [refreshing, setRefreshing] = useState(false);
-  
+
+  const {salesOrders, loadSalesOrders} = useSalesOrders();
   const inputRef = useRef<TextInput | null>(null);
 
   const itemsPerPage = 4;
@@ -23,28 +24,15 @@ export default function Home() {
     NavigationBar.setVisibilityAsync('hidden')
     NavigationBar.setBehaviorAsync('overlay-swipe')
 
-    loadData();
+    loadSalesOrders();
   }, []);
-  
-  const loadData = async () => {
-    try{
-      await axios.post(`${api_url}/shipment/listApp`).then((response) => {
-        setData(response.data.response);
-      });  
-    }
-    catch(err){
-      Alert.alert('Erro',`Erro ao carregar pedidos... ${err}`)
-      console.log(err)  
-      return;
-    }
-  }
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadSalesOrders();
     setRefreshing(false);
   };
-  const filteredData = data.filter((item) =>
+  const filteredData = salesOrders.filter((item) =>
     String(item.order_code)
       .includes(search.toLowerCase())
   );

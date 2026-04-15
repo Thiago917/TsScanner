@@ -20,6 +20,7 @@ export default function Warehouse() {
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
+    console.log(orders)
   }, []);
   
   const onRefresh = async () => {
@@ -79,16 +80,16 @@ export default function Warehouse() {
                     <View style={styles.row}>
 
                         <View style={styles.cell}>
-                        <Text style={{fontWeight: 'bold', color: '#0abb87'}}>{item.order_code}</Text>
+                        <Text style={{fontWeight: 'bold', color: '#0abb87'}}>{!item.isReq ? item.order_code : `REQ-${item.id.toString().padStart(5, '0')}`}</Text>
                         </View>
 
                         <View style={styles.cell}>
-                        <Text>Total: {Number(item.amount).toFixed(0)}</Text>
+                        <Text>Total: {!item.isReq ? Number(item.amount).toFixed(0) : item.items.length}</Text>
                         </View>
 
                         <View style={styles.cell}>
                             <Link href={{pathname:'/warehouse/bip/[productionOrder]', params:{
-                                productionOrder: String(item.order_code),
+                                productionOrder: !item.isReq ? String(item.order_code) : item.id,
                             }}} asChild>
                                 <TouchableOpacity style={styles.bipButton}>
                                     {item.status === 1 ? (

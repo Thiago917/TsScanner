@@ -12,6 +12,7 @@ export default function WarehouseBip() {
   const { productionOrder } = useLocalSearchParams<{ productionOrder: string }>();
 
   const [items, setItems] = useState<any[]>([]); // Inicializado como array
+  const [current, setCurrent] = useState<any>({}); // Inicializado como objeto
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [checking, setChecking] = useState<boolean>(false);
@@ -38,8 +39,7 @@ export default function WarehouseBip() {
   const loadData = async () => {
     setLoading(true);
     try {
-
-      const opDetails = orders.find((o) => String(o.order_code) === String(productionOrder));
+      const opDetails = orders.find((o) => !o.isReq ? String(o.order_code) === String(productionOrder) : String(o.id) === String(productionOrder));
       if (!opDetails) {
         Alert.alert('Erro', `O.P ${productionOrder} não encontrada ou não atribuída a você.`, [
           { text: 'Ok', onPress: () => router.replace('/warehouse') }
@@ -47,6 +47,7 @@ export default function WarehouseBip() {
         return;
       }
 
+      setCurrent(opDetails);
       const formattedItems = opDetails.items.map((item: any) => ({
         ...item,
         picked: Number(item.separated) || 0, 
@@ -55,8 +56,12 @@ export default function WarehouseBip() {
       formattedItems
       setItems(formattedItems);
 
+      var orderId = !opDetails.isReq ? opDetails.order_code : `REQ-${opDetails.id}`; 
       const now = await getDate(new Date());
-      setOrders(productionOrder, { "status": 2, "separating_at": now });
+
+      if(opDetails.status === 1){
+        setOrders(orderId, { "status": 2, "separating_at": now });
+      }
 
       const allItemsPicked = formattedItems.every((item: any) => Number(item.picked) >= Number(item.quantity));
       setSubmitting(!allItemsPicked); 
@@ -112,7 +117,7 @@ export default function WarehouseBip() {
 
     try {
       const data = {
-        op: productionOrder,
+        op: !current.isReq ? productionOrder : `REQ-${current.id}`,
         items: items.map((item: any) => ({
           product_code: item.product_code, 
           picked: item.picked
@@ -212,13 +217,12 @@ export default function WarehouseBip() {
       </View>
     );
   }
-
   return (
     <View style={{ flex: 1 }}>
       <TextInput autoFocus ref={inputRef} style={styles.hiddenInput} value={inputValue} showSoftInputOnFocus={false} onBlur={() => setTimeout(() => inputRef.current?.focus(), 50)} onChangeText={handleBarcodeInput} />
 
       <Text style={styles.h1}>
-        O.P: <Text style={{ color: '#0abb87' }}>#{productionOrder}</Text>
+        O.P: <Text style={{ color: '#0abb87' }}>#{!current.isReq ? productionOrder : `REQ-${productionOrder}`}</Text>
       </Text>
 
       <FlatList

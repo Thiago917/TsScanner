@@ -1,6 +1,6 @@
 import { useOrders } from '@/contexts/ProductionOrdersContext';
 import { Ionicons } from '@expo/vector-icons';
-import axios from "axios";
+import axios from 'axios';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -15,6 +15,7 @@ export default function ConferenceDetail() {
   const router = useRouter();
   
   const [items, setItems] = useState<any[]>([]);
+  const [current, setCurrent] = useState<any>({});
   const [loading, setLoading] = useState<boolean>(false);
   const {checking, setOrders} = useOrders()
 
@@ -39,11 +40,13 @@ export default function ConferenceDetail() {
     try {
 
       const now = await getDate(new Date());
-      await setOrders(confereceOp, { "status": 7 , 'checking_at': now });
-      const filter = checking.find((op) => String(op.order_code) === String(confereceOp));
+      const filter = checking.find((op) => !op.isReq ? String(op.order_code) === String(confereceOp) : String(op.id) === String(confereceOp));
       if (filter) {
+        const orderId = !filter.isReq ? filter.order_code : `REQ-${filter.id}`;
+        await setOrders(orderId, { "status": 7 , 'checking_at': now });
         const itemsWithCheck = filter.items.map((i: any) => ({ ...i, checked: false }));
         setItems(itemsWithCheck);
+        setCurrent(filter);
       } else {
         setItems([]);
       }
@@ -73,7 +76,7 @@ export default function ConferenceDetail() {
     setLoading(true);
     try {
       const data = {
-        op: confereceOp,
+        op: !current.isReq ? current.order_code : `REQ-${current.id}`,
         prods: items.map((item) => ({
           code: item.product_code,
           picked: item.separated
@@ -143,7 +146,7 @@ export default function ConferenceDetail() {
       
       <View style={styles.headerTitle}>
         <Text style={styles.h1}>
-          Conferência OP: <Text style={{ color: '#0abb87' }}>#{confereceOp}</Text>
+          Conferência OP: <Text style={{ color: '#0abb87' }}>#{!current.isReq ? confereceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
         </Text>
       </View>
 
