@@ -11,8 +11,9 @@ export default function Warehouse() {
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const {orders, loadOrders} = useOrders()
-  
+
   const inputRef = useRef<TextInput | null>(null);
 
   const itemsPerPage = 4;
@@ -20,8 +21,8 @@ export default function Warehouse() {
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
-    console.log(orders)
-  }, []);
+    setLoading(false);
+  }, [orders]);
   
   const onRefresh = async () => {
     setRefreshing(true);
@@ -36,6 +37,14 @@ export default function Warehouse() {
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
+
+  if(loading){
+    return(
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <ActivityIndicator color={process.env.EXPO_PUBLIC_MAIN_COLOR}/>
+        </View>
+    )
+  }
 
   return (
 

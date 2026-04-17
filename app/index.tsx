@@ -14,7 +14,7 @@ export default function indexScreen(){
 
                 const token = await AsyncStorge.getItem('@userToken')
                 const role = await AsyncStorge.getItem('@userRole')
-                
+
                     if(!token || !role){
                         router.replace('/login')
                         return;
@@ -40,8 +40,6 @@ export default function indexScreen(){
 
         check()
     }, [])
-
-
 
     return(
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>

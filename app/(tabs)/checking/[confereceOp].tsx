@@ -139,8 +139,8 @@ export default function ConferenceDetail() {
   }
 
   const allChecked = items.length > 0 && items.every(item => item.checked);
-  return (
 
+  return (
     <View style={styles.container}>
       <StatusBar hidden />
       
@@ -150,15 +150,10 @@ export default function ConferenceDetail() {
         </Text>
       </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={(item, index) => String(item.id || index)}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
+      <FlatList data={items} keyExtractor={(item, index) => String(item.id || index)} renderItem={renderItem} contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <Text style={styles.emptyText}>Nenhum item encontrado.</Text>
-        }
-      />
+        }/>
 
       <View style={styles.footer}>
         <TouchableOpacity key={allChecked ? 'ready-to-go' : 'not-ready'} activeOpacity={0.8} onPress={() => {if (allChecked && !loading) {finalizeChecking();}}}
@@ -177,7 +172,6 @@ export default function ConferenceDetail() {
           ) : (
             <Text style={{fontWeight: 'bold', color: '#fff', fontSize: 16, opacity: allChecked ? 1 : 0.6}}>Finalizar e Despachar</Text>
           )}
-          
         </TouchableOpacity>
       </View>
     </View>

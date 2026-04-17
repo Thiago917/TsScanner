@@ -1,55 +1,54 @@
 import { Box } from '@/components/ui/box';
 import { useSalesOrders } from '@/contexts/salesOrdersContext';
-import * as NavigationBar from 'expo-navigation-bar';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const api_url = process.env.EXPO_PUBLIC_API_URL;
-
 export default function Home() {
-
-  const [data, setData] = useState<any[]>([]);
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [filtered, setFiltered] = useState<any[]>([]);
+  const [totalPages, setPages] = useState<number>(1);
+  const [paginated, setPaginated] = useState<any[]>([]);
 
-  const {salesOrders, loadSalesOrders} = useSalesOrders();
+  // Blindagem contra contexto undefined
+  const { salesOrders = [], loadSalesOrders } = useSalesOrders() || {};
   const inputRef = useRef<TextInput | null>(null);
 
   const itemsPerPage = 4;
 
   useEffect(() => {
-    NavigationBar.setVisibilityAsync('hidden')
-    NavigationBar.setBehaviorAsync('overlay-swipe')
+    // Garante que salesOrders é um array antes de filtrar
+    const dataToFilter = Array.isArray(salesOrders) ? salesOrders : [];
 
-    loadSalesOrders();
-  }, []);
+    const filteredData = dataToFilter.filter((item) =>
+      String(item.order_code || "")
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+
+    setFiltered(filteredData);
+    setPages(Math.ceil(filteredData.length / itemsPerPage) || 1);
+
+    // Paginação baseada nos dados filtrados
+    const start = (page - 1) * itemsPerPage;
+    const paginatedData = filteredData.slice(start, start + itemsPerPage);
+    setPaginated(paginatedData);
+
+  }, [salesOrders, search, page]); // Adicionei page aqui para a paginação funcionar
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadSalesOrders();
     setRefreshing(false);
   };
-  const filteredData = salesOrders.filter((item) =>
-    String(item.order_code)
-      .includes(search.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-
-  const paginatedData = filteredData.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
-  );
 
   return (
-
       <View style={{ flex: 1}}>
-
         <StatusBar hidden />
-        {/* SEARCH */}
         <TextInput
           placeholder="Buscar pedido..."
           ref={inputRef}
@@ -69,95 +68,63 @@ export default function Home() {
               <Text style={[styles.cell, styles.headerText]}>Separar</Text>
             </View>
               <FlatList
-                data={paginatedData}
+                data={paginated}
                 keyExtractor={(item) => String(item.id)}
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                renderItem={({item}) => (
-                  <View style={styles.row}>
+                renderItem={({item}) => {
+                  // TRATAMENTO DE VALORES NULL PARA O CÁLCULO
+                  const total = Number(item.items_sum_quantity || 0);
+                  const sep = Number(item.items_sum_separated || 0);
+                  const percent = total > 0 ? ((sep / total) * 100).toFixed(0) : 0;
 
-                    <View style={styles.cell}>
-                      <Text style={{fontWeight: 'bold', color: '#0abb87'}}>{item.order_code}</Text>
-                      <Text>
-                        {item.items_sum_quantity > 0
-                          ? (
-                              (Number(item.items_sum_separated) /
-                                Number(item.items_sum_quantity)) *
-                              100
-                            ).toFixed(0)
-                          : 0}
-                        %
-                      </Text>
-                    </View>
+                  return (
+                    <View style={styles.row}>
+                      <View style={styles.cell}>
+                        <Text style={{fontWeight: 'bold', color: '#0abb87'}}>{item.order_code}</Text>
+                        <Text>{percent}%</Text>
+                      </View>
 
-                    <View style={styles.cell}>
-                      <Text>Total: {Number(item.items_sum_quantity).toFixed(0)}</Text>
-                      <Text>Separado: {Number(item.items_sum_separated).toFixed(0)}</Text>
-                    </View>
+                      <View style={styles.cell}>
+                        <Text>Total: {total.toFixed(0)}</Text>
+                        <Text>Separado: {sep.toFixed(0)}</Text>
+                      </View>
 
-                    <View style={styles.cell}>
-                      {
-                      Number(item.items_sum_separated) > 0 && Number(item.items_sum_separated) < Number(item.items_sum_quantity) ? (
-                          <Link href={{pathname:'/shipment/bip/[order]', params:{
-                            order: String(item.order_code),
-                            amount: Number(item.items_sum_quantity)
-                          }}} asChild>
-                            <TouchableOpacity style={styles.bipButton}>
-                                <Text style={styles.bipText}>Retomar</Text>
+                      <View style={styles.cell}>
+                        {sep > 0 && sep >= total && total > 0 ? (
+                            <TouchableOpacity disabled style={[styles.bipButton, styles.disabledButton]}>
+                              <Text style={styles.bipText}>Ok</Text>
                             </TouchableOpacity>
-                          </Link>
-                        ) : Number(item.items_sum_separated) > 0 && Number(item.items_sum_separated) >= Number(item.items_sum_quantity) ? (
-                          <TouchableOpacity disabled style={[styles.bipButton, styles.disabledButton]}>
-                            <Text style={styles.bipText}>Ok</Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <Link href={{pathname:'/shipment/bip/[order]', params:{
-                            order: String(item.order_code),
-                            amount: Number(item.items_sum_quantity)
-                          }}} asChild>
-                            <TouchableOpacity style={styles.bipButton}>
-                                <Text style={styles.bipText}>Iniciar</Text>
-                            </TouchableOpacity>
-                          </Link>
-                        )
-                      }
+                          ) : (
+                            <Link href={{pathname:'/shipment/bip/[order]', params:{
+                              order: String(item.order_code),
+                              amount: total
+                            }}} asChild>
+                              <TouchableOpacity style={styles.bipButton}>
+                                  <Text style={styles.bipText}>{sep > 0 ? 'Retomar' : 'Iniciar'}</Text>
+                              </TouchableOpacity>
+                            </Link>
+                          )
+                        }
+                      </View>
                     </View>
-                  </View>
-                )}
+                  )
+                }}
               />
         </Box>
 
         <View style={styles.pagination}>
-          <Pressable
-            disabled={page === 1}
-            onPress={() => setPage(page - 1)}
-          >
-            <Text style={page === 1 ? styles.disabled : styles.button}>
-              Anterior
-            </Text>
+          <Pressable disabled={page === 1} onPress={() => setPage(page - 1)}>
+            <Text style={page === 1 ? styles.disabled : styles.button}>Anterior</Text>
           </Pressable>
-
-          <Text>
-            Página {page} de {totalPages}
-          </Text>
-
-          <Pressable
-            disabled={page === totalPages}
-            onPress={() => setPage(page + 1)}
-          >
-            <Text
-              style={
-                page === totalPages ? styles.disabled : styles.button
-              }
-            >
-              Próxima
-            </Text>
+          <Text>Página {page} de {totalPages}</Text>
+          <Pressable disabled={page === totalPages} onPress={() => setPage(page + 1)}>
+            <Text style={page === totalPages ? styles.disabled : styles.button}>Próxima</Text>
           </Pressable>
         </View>
       </View>
   );
 }
-
 const styles = StyleSheet.create({
   search: {
     borderWidth: 1,

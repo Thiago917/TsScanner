@@ -55,7 +55,6 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
         try {
             const response = await axios.get(`${api_url}/warehouse/list`);
             const res = response.data
-            console.log(res)
             const ordersArr: OrderType[] = [];
             const checkingArr: OrderType[] = [];
             res.forEach((item: any) => {
@@ -82,7 +81,7 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
         const prev = orders;
             
         try {
-
+            
             const response = await axios.patch(`${api_url}/warehouse/update-op/${op}`, updates)
             const res = response.data
 
@@ -105,8 +104,9 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
     }
 
     useEffect(() => {
+        if(!user?.id)return;
         loadOrders()
-    }, [user])
+    }, [user?.id])
 
     return(
         <ProductionOrdersContext.Provider value={{orders, loadOrders, setOrders, checking}}>
