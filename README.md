@@ -1,50 +1,36 @@
-# Welcome to your Expo app 👋
+sScanner – Orquestração Logística e Produção 📦🚀
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+O TsScanner é uma solução Full Stack de missão crítica desenvolvida para digitalizar e automatizar o fluxo operacional entre os departamentos de PCP, Almoxarifado e Produção. O projeto eliminou processos manuais baseados em papel e introduziu uma arquitetura em tempo real para controle de inventário e separação de materiais.
+🎯 Impacto no Negócio
 
-## Get started
+    Eficiência de Comunicação: Aumento superior a 30% na velocidade de troca de informações entre setores.
 
-1. Install dependencies
+    Paperless: Eliminação de 100% do uso de papel em processos de requisição e separação.
 
-   ```bash
-   npm install
-   ```
+    Integridade de Estoque: Automação total da movimentação de saldos para Ordens de Produção (OPs) com estruturas complexas (+100 subitens).
 
-2. Start the app
+    Rastreabilidade: Registro em tempo real de cada etapa da produção, garantindo visibilidade total para a gestão.
 
-   ```bash
-   npx expo start
-   ```
+🛠️ Stack Tecnológica
 
-In the output, you'll find options to open the app in a
+    Backend: PHP com Laravel.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+    Comunicação Real-Time: Laravel WebSockets (Pusher/Socket.io) para notificações instantâneas.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+    Banco de Dados: SQL Server (utilizando Triggers e Procedures para integridade de dados).
 
-## Get a fresh project
+    Frontend & Mobile: Interfaces otimizadas para coletores de dados (scanners) e dispositivos móveis.
 
-When you're ready, run:
+⚙️ Funcionalidades Principais
 
-```bash
-npm run reset-project
-```
+    Dashboard PCP: Painel para sinalização de ordens que devem ser separadas.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+    Distribuição Inteligente: Algoritmo que designa tarefas para o conferente com menor carga de trabalho no momento.
 
-## Learn more
+    Fluxo de Separação (Scanner): Separação guiada com bipagem de itens e validação de endereços físicos.
 
-To learn more about developing your project with Expo, look at the following resources:
+    Automação de Saldo: Processamento automático de baixa de estoque e transferência de slots após a conferência.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+🔒 Segurança e Resiliência
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Como parte do foco em Cybersecurity, o sistema foi desenvolvido com práticas de validação rigorosa de dados e logs de auditoria para garantir que as movimentações de inventário sejam auditáveis e seguras.
