@@ -18,6 +18,8 @@ export default function CheckingList() {
     NavigationBar.setBehaviorAsync('overlay-swipe');
   }, []);
 
+  console.log('só pra enviar')
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadOrders();
