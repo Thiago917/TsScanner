@@ -1,7 +1,9 @@
 import axios from "axios";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Alert } from "react-native";
+import { createEchoInstance } from "../services/echo";
 import { useUser } from "./UserContext";
+
 
 type OrderItemsType ={
     id: number;
@@ -104,8 +106,26 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
     }
 
     useEffect(() => {
+
         if(!user?.id)return;
-        loadOrders()
+
+        let echo:any = null;
+
+        const initializeEcho = async () => {
+            loadOrders()
+            const echo = createEchoInstance();
+            echo.channel(`new-order-to-${user.id}`).listen('.orders', () => loadOrders());
+        }
+
+        initializeEcho();
+
+        return () => {
+            if(echo){
+                echo.disconnect();
+                console.log('Echo foi desconectado')
+            }
+        }
+
     }, [user?.id])
 
     return(

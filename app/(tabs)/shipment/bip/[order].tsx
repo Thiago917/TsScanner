@@ -4,10 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
-
 const api_url = process.env.EXPO_PUBLIC_API_URL
-
-
 export default function Bip() {
 
   const router = useRouter();
@@ -22,50 +19,54 @@ export default function Bip() {
   const [orderID, setOrderID] = useState<string>('');
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingData, setLoadingData] = useState<boolean>(false);
   const [bipedAmount, setBipedAmount] = useState(false)
   const [split, setSplit] = useState(true);
   const [countAmount, setCountAmount] = useState<number>(0);
-
   
   useEffect(() => {
     loadData()
   }, []);
 
   useEffect(() => {
+    
     const ns_registered = serials.map((item) => item.serial_number);
     const bipped = Object.values(ns).map(item => item.split(',')).flat().length + ns_registered.length
     
     if(bipped > 0 && Number(countAmount) === Number(bipped)){
       setSplit(false)
       setBipedAmount(true)
-    } 
+    }
 
   }, [ns])
 
-  const loadData = async ()  => {
+  const loadData = async () => {
+    setLoadingData(true);
+    try {
+      const response = await axios.post(`${api_url}/shipment/separation-details/${order}`);
       
-    try{
-      axios.post(`${api_url}/shipment/separation-details/${order}`).then((response) => {
-        const itemsFromApi = response.data.response.items;
+      const itemsFromApi = response.data.response.items;
 
-        setItems(itemsFromApi);
-        setOrderID(response.data.response.id);
-        setSerials(response.data.ns);
-        setEans(itemsFromApi.map((item : any) => item.code));
-        const total = itemsFromApi.reduce(
-          (sum: number, item: any) => sum + Number(item.quantity),
-          0
-        );
-        setCountAmount(total)
-      })
+      setItems(itemsFromApi);
+      setOrderID(response.data.response.id);
+      setSerials(response.data.ns);
+      setEans(itemsFromApi.map((item: any) => item.code));
+
+      const total = itemsFromApi.reduce(
+        (sum: number, item: any) => sum + Number(item.quantity),
+        0
+      );
+      setCountAmount(total);
+    } catch (err) {
+      Alert.alert(
+        'Erro',
+        `Aconteceu um problema ao carregar itens do pedido ${order}...`,
+        [{ text: 'Ok', onPress: () => inputRef.current?.focus() }]
+      );
+    } finally {
+      setLoadingData(false); 
     }
-    catch(err){
-      Alert.alert('Erro',`Aconteceu um problema ao carregar itens do pedido ${order}...`, [{
-        text: 'Ok',
-        onPress: () => inputRef.current?.focus()
-      }])
-    }
-  }
+  };
 
   const confirmEAN = (message: string): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -269,6 +270,14 @@ export default function Bip() {
       text: 'NÃO'
     }])
   } 
+
+  if(loadingData){
+    return(
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator color={process.env.EXPO_PUBLIC_MAIN_COLOR}/>
+      </View>
+    )
+  }
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.row}>

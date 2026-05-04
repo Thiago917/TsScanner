@@ -75,16 +75,25 @@ export default function ConferenceDetail() {
 
     setLoading(true);
     try {
+      const uid = crypto.randomUUID();
       const data = {
         op: !current.isReq ? current.order_code : `REQ-${current.id}`,
         prods: items.map((item) => ({
           code: item.product_code,
           picked: item.separated
-        }))
+        })),
+        uid: uid,
       }
 
-      await axios.post(`${api_url}/warehouse/move-to-slot`, data);
+      console.log(data)
 
+      const response = await axios.post(`${api_url}/warehouse/move-to-slot`, data);
+      const res = response.data
+
+      if(res.error){
+        Alert.alert("Erro", res.message);
+        return;
+      }
       Alert.alert('Sucesso!', 'Conferência finalizada e produtos despachados!', [
         { text: 'Ok', onPress: () => router.replace('/warehouse') }
       ]);
@@ -146,7 +155,7 @@ export default function ConferenceDetail() {
       
       <View style={styles.headerTitle}>
         <Text style={styles.h1}>
-          Conferência OP: <Text style={{ color: '#0abb87' }}>#{!current.isReq ? confereceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
+          {!current.isReq ? 'Conferência OP:': 'Conferência da:'} <Text style={{ color: '#0abb87' }}>#{!current.isReq ? confereceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
         </Text>
       </View>
 

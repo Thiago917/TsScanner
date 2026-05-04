@@ -1,5 +1,6 @@
 import { Box } from '@/components/ui/box';
 import { useOrders } from '@/contexts/ProductionOrdersContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -7,22 +8,27 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function Warehouse() {
-
+  
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const {orders, loadOrders} = useOrders()
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const { orders, loadOrders } = useOrders();
 
   const inputRef = useRef<TextInput | null>(null);
-
   const itemsPerPage = 4;
 
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
-    setLoading(false);
-  }, [orders]);
+    
+    const loadData = async () => {
+      setLoading(true);
+      await loadOrders();
+      setLoading(false);
+    }
+    loadData();
+  }, []);
   
   const onRefresh = async () => {
     setRefreshing(true);
@@ -30,12 +36,25 @@ export default function Warehouse() {
     setRefreshing(false);
   };
   
-  const filtered = orders.filter((item) => String(item.order_code).toLowerCase().includes(search.toLowerCase()))
+  const filtered = orders.filter((item) => String(item.order_code).toLowerCase().includes(search.toLowerCase()));
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
 
   const paginatedData = filtered.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
+  );
+
+  const EmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons name="package-variant" size={80} color="#ccc" />
+      <Text style={styles.emptyTitle}>Tudo em dia!</Text>
+      <Text style={styles.emptySubtitle}>
+        Não há pedidos pendentes para separação no momento.
+      </Text>
+      <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+        <Text style={styles.refreshButtonText}>Atualizar lista</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   if(loading){
@@ -47,11 +66,9 @@ export default function Warehouse() {
   }
 
   return (
-
-      <View style={{ flex: 1}}>
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
         <StatusBar hidden />
         
-        {/* SEARCH */}
         <TextInput
           placeholder="Buscar pedido..."
           ref={inputRef}
@@ -59,41 +76,35 @@ export default function Warehouse() {
           value={search}
           onChangeText={(text) => {
             setSearch(text);
-            setPage(1); // reset página ao buscar
+            setPage(1);
           }}
           style={styles.search}
         />
 
-        <Box className="rounded-lg overflow-hidden">
+        <Box className="rounded-lg overflow-hidden flex-1">
             <View style={styles.header}>
               <Text style={[styles.cell, styles.headerText]}>O.P</Text>
               <Text style={[styles.cell, styles.headerText]}>Quantidade</Text>
               <Text style={[styles.cell, styles.headerText]}>Separar</Text>
             </View>
-              <FlatList
+            
+            <FlatList
                 data={paginatedData}
                 keyExtractor={(item) => String(item.id)}
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                renderItem={({item}) => {
-
-                    if(!paginatedData){
-                        return(
-                            <View>
-                                <ActivityIndicator color={process.env.EXPO_PUBLIC_MAIN_COLOR}/>
-                            </View>
-                        )
-                    }
-
-                    return(
+                ListEmptyComponent={<EmptyList />}
+                contentContainerStyle={paginatedData.length === 0 ? { flex: 1 } : null}
+                renderItem={({item}) => (
                     <View style={styles.row}>
-
                         <View style={styles.cell}>
-                        <Text style={{fontWeight: 'bold', color: '#0abb87'}}>{!item.isReq ? item.order_code : `REQ-${item.id.toString().padStart(5, '0')}`}</Text>
+                            <Text style={{fontWeight: 'bold', color: '#0abb87'}}>
+                                {!item.isReq ? item.order_code : `REQ-${item.id.toString().padStart(5, '0')}`}
+                            </Text>
                         </View>
 
                         <View style={styles.cell}>
-                        <Text>Total: {!item.isReq ? Number(item.amount).toFixed(0) : item.items.length}</Text>
+                            <Text>Total: {!item.isReq ? Number(item.amount).toFixed(0) : item.items.length}</Text>
                         </View>
 
                         <View style={styles.cell}>
@@ -101,49 +112,28 @@ export default function Warehouse() {
                                 productionOrder: !item.isReq ? String(item.order_code) : item.id,
                             }}} asChild>
                                 <TouchableOpacity style={styles.bipButton}>
-                                    {item.status === 1 ? (
-                                        <Text style={styles.bipText}>Iniciar</Text>
-                                    ):(
-                                        <Text style={styles.bipText}>Retomar</Text>
-                                    )}
+                                    <Text style={styles.bipText}>
+                                        {item.status === 1 ? 'Iniciar' : 'Retomar'}
+                                    </Text>
                                 </TouchableOpacity>
                             </Link>
                         </View>
                     </View>
-
-                    )
-                } 
-            }
+                )} 
             />
         </Box>
 
-        <View style={styles.pagination}>
-          <Pressable
-            disabled={page === 1}
-            onPress={() => setPage(page - 1)}
-          >
-            <Text style={page === 1 ? styles.disabled : styles.button}>
-              Anterior
-            </Text>
-          </Pressable>
-
-          <Text>
-            Página {page} de {totalPages}
-          </Text>
-
-          <Pressable
-            disabled={page === totalPages}
-            onPress={() => setPage(page + 1)}
-          >
-            <Text
-              style={
-                page === totalPages ? styles.disabled : styles.button
-              }
-            >
-              Próxima
-            </Text>
-          </Pressable>
-        </View>
+        {filtered.length > 0 && (
+            <View style={styles.pagination}>
+                <Pressable disabled={page === 1} onPress={() => setPage(page - 1)}>
+                    <Text style={page === 1 ? styles.disabled : styles.button}>Anterior</Text>
+                </Pressable>
+                <Text>Página {page} de {totalPages}</Text>
+                <Pressable disabled={page === totalPages} onPress={() => setPage(page + 1)}>
+                    <Text style={page === totalPages ? styles.disabled : styles.button}>Próxima</Text>
+                </Pressable>
+            </View>
+        )}
       </View>
   );
 }
@@ -160,7 +150,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 16,
-    paddingBottom: 200
+    paddingBottom: 40 
   },
   button: {
     color: '#3b3b57',
@@ -173,7 +163,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    alignItems: 'center',
+    borderBottomColor: '#eee',
+    backgroundColor: '#f9f9f9'
   },
   row: {
     flexDirection: 'row',
@@ -193,15 +184,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  action: {
-    color: '#2563eb',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
   bipButton: {
     backgroundColor: '#3b3b57',
-    width: '50%',
-    padding: 5,
+    width: '70%',
+    padding: 8,
     borderRadius: 5,
   },
   bipText: {
@@ -209,7 +195,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  disabledButton: {
-    opacity: 0.4
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 10,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  refreshButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  refreshButtonText: {
+    color: '#3b3b57',
+    fontWeight: '700',
   }
 });

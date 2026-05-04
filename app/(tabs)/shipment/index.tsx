@@ -1,118 +1,148 @@
 import { Box } from '@/components/ui/box';
 import { useSalesOrders } from '@/contexts/salesOrdersContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as NavigationBar from 'expo-navigation-bar';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const api_url = process.env.EXPO_PUBLIC_API_URL;
 export default function Home() {
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [refreshing, setRefreshing] = useState(false);
-  const [filtered, setFiltered] = useState<any[]>([]);
-  const [totalPages, setPages] = useState<number>(1);
-  const [paginated, setPaginated] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Blindagem contra contexto undefined
   const { salesOrders = [], loadSalesOrders } = useSalesOrders() || {};
   const inputRef = useRef<TextInput | null>(null);
 
   const itemsPerPage = 4;
 
   useEffect(() => {
-    // Garante que salesOrders é um array antes de filtrar
-    const dataToFilter = Array.isArray(salesOrders) ? salesOrders : [];
+    NavigationBar.setVisibilityAsync('hidden');
+    NavigationBar.setBehaviorAsync('overlay-swipe');
 
-    const filteredData = dataToFilter.filter((item) =>
-      String(item.order_code || "")
-        .toLowerCase()
-        .includes(search.toLowerCase())
+    const loadData = async () => {
+      setLoading(true);
+      if (loadSalesOrders) await loadSalesOrders();
+      setLoading(false);
+    };
+
+    loadData();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const data = Array.isArray(salesOrders) ? salesOrders : [];
+    return data.filter((item) =>
+      String(item.order_code || "").toLowerCase().includes(search.toLowerCase())
     );
+  }, [salesOrders, search]);
 
-    setFiltered(filteredData);
-    setPages(Math.ceil(filteredData.length / itemsPerPage) || 1);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
 
-    // Paginação baseada nos dados filtrados
+  const paginated = useMemo(() => {
     const start = (page - 1) * itemsPerPage;
-    const paginatedData = filteredData.slice(start, start + itemsPerPage);
-    setPaginated(paginatedData);
-
-  }, [salesOrders, search, page]); // Adicionei page aqui para a paginação funcionar
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, page]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadSalesOrders();
+    if (loadSalesOrders) await loadSalesOrders();
     setRefreshing(false);
   };
 
+  const EmptyExpedicao = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons name="truck-check-outline" size={80} color="#cbd5e1" />
+      <Text style={styles.emptyTitle}>Expedição limpa!</Text>
+      <Text style={styles.emptySubtitle}>
+        Não há pedidos de vendas aguardando separação no momento.
+      </Text>
+      <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+        <Text style={styles.refreshButtonText}>Atualizar Pedidos</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={process.env.EXPO_PUBLIC_MAIN_COLOR || '#3b3b57'} />
+      </View>
+    );
+  }
+
   return (
-      <View style={{ flex: 1}}>
-        <StatusBar hidden />
-        <TextInput
-          placeholder="Buscar pedido..."
-          ref={inputRef}
-          keyboardType={'numeric'}
-          value={search}
-          onChangeText={(text) => {
-            setSearch(text);
-            setPage(1); 
-          }}
-          style={styles.search}
-        />
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <StatusBar hidden />
+      <TextInput
+        placeholder="Buscar pedido..."
+        ref={inputRef}
+        keyboardType={'numeric'}
+        value={search}
+        onChangeText={(text) => {
+          setSearch(text);
+          setPage(1);
+        }}
+        style={styles.search}
+      />
 
-        <Box className="rounded-lg overflow-hidden">
-            <View style={styles.header}>
-              <Text style={[styles.cell, styles.headerText]}>Produto</Text>
-              <Text style={[styles.cell, styles.headerText]}>Quantidade</Text>
-              <Text style={[styles.cell, styles.headerText]}>Separar</Text>
-            </View>
-              <FlatList
-                data={paginated}
-                keyExtractor={(item) => String(item.id)}
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                renderItem={({item}) => {
-                  // TRATAMENTO DE VALORES NULL PARA O CÁLCULO
-                  const total = Number(item.items_sum_quantity || 0);
-                  const sep = Number(item.items_sum_separated || 0);
-                  const percent = total > 0 ? ((sep / total) * 100).toFixed(0) : 0;
+      <Box className="rounded-lg overflow-hidden flex-1 mx-2">
+        <View style={styles.header}>
+          <Text style={[styles.cell, styles.headerText]}>Produto</Text>
+          <Text style={[styles.cell, styles.headerText]}>Quantidade</Text>
+          <Text style={[styles.cell, styles.headerText]}>Separar</Text>
+        </View>
 
-                  return (
-                    <View style={styles.row}>
-                      <View style={styles.cell}>
-                        <Text style={{fontWeight: 'bold', color: '#0abb87'}}>{item.order_code}</Text>
-                        <Text>{percent}%</Text>
-                      </View>
+        <FlatList
+          data={paginated}
+          keyExtractor={(item) => String(item.id)}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={!loading && <EmptyExpedicao />}
+          contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+          renderItem={({ item }) => {
+            const total = Number(item.items_sum_quantity || 0);
+            const sep = Number(item.items_sum_separated || 0);
+            const percent = total > 0 ? ((sep / total) * 100).toFixed(0) : 0;
 
-                      <View style={styles.cell}>
-                        <Text>Total: {total.toFixed(0)}</Text>
-                        <Text>Separado: {sep.toFixed(0)}</Text>
-                      </View>
+            return (
+              <View style={styles.row}>
+                <View style={styles.cell}>
+                  <Text style={{ fontWeight: 'bold', color: '#0abb87' }}>{item.order_code}</Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>{percent}%</Text>
+                </View>
 
-                      <View style={styles.cell}>
-                        {sep > 0 && sep >= total && total > 0 ? (
-                            <TouchableOpacity disabled style={[styles.bipButton, styles.disabledButton]}>
-                              <Text style={styles.bipText}>Ok</Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <Link href={{pathname:'/shipment/bip/[order]', params:{
-                              order: String(item.order_code),
-                              amount: total
-                            }}} asChild>
-                              <TouchableOpacity style={styles.bipButton}>
-                                  <Text style={styles.bipText}>{sep > 0 ? 'Retomar' : 'Iniciar'}</Text>
-                              </TouchableOpacity>
-                            </Link>
-                          )
-                        }
-                      </View>
+                <View style={styles.cell}>
+                  <Text style={{ fontSize: 13 }}>Total: {total.toFixed(0)}</Text>
+                  <Text style={{ fontSize: 13 }}>Sep: {sep.toFixed(0)}</Text>
+                </View>
+
+                <View style={styles.cell}>
+                  {sep > 0 && sep >= total && total > 0 ? (
+                    <View style={[styles.bipButton, styles.disabledButton]}>
+                      <Text style={styles.bipText}>OK</Text>
                     </View>
-                  )
-                }}
-              />
-        </Box>
+                  ) : (
+                    <Link href={{
+                      pathname: '/shipment/bip/[order]', params: {
+                        order: String(item.order_code),
+                        amount: total
+                      }
+                    }} asChild>
+                      <TouchableOpacity style={styles.bipButton}>
+                        <Text style={styles.bipText}>{sep > 0 ? 'Retomar' : 'Iniciar'}</Text>
+                      </TouchableOpacity>
+                    </Link>
+                  )}
+                </View>
+              </View>
+            )
+          }}
+        />
+      </Box>
 
+      {filtered.length > 0 && (
         <View style={styles.pagination}>
           <Pressable disabled={page === 1} onPress={() => setPage(page - 1)}>
             <Text style={page === 1 ? styles.disabled : styles.button}>Anterior</Text>
@@ -122,9 +152,11 @@ export default function Home() {
             <Text style={page === totalPages ? styles.disabled : styles.button}>Próxima</Text>
           </Pressable>
         </View>
-      </View>
+      )}
+    </View>
   );
 }
+
 const styles = StyleSheet.create({
   search: {
     borderWidth: 1,
@@ -132,12 +164,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     margin: 10,
+    backgroundColor: '#fff',
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 16,
-    paddingBottom: 200
+    paddingBottom: 40,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee'
   },
   button: {
     color: '#3b3b57',
@@ -146,48 +182,77 @@ const styles = StyleSheet.create({
   disabled: {
     color: '#aaa',
   },
-    header: {
+  header: {
     flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
+    borderBottomColor: '#eee',
     alignItems: 'center',
+    backgroundColor: '#f8f9fa'
   },
-
   row: {
     flexDirection: 'row',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    alignItems: 'center', 
-    backgroundColor: '#e8e8e8'
+    borderBottomColor: '#eee',
+    alignItems: 'center',
+    backgroundColor: '#fff'
   },
   cell: {
     flex: 1,
     paddingHorizontal: 8,
-    alignItems: 'center',     
+    alignItems: 'center',
     justifyContent: 'center',
   },
   headerText: {
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  action: {
-    color: '#2563eb',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    color: '#333'
   },
   bipButton: {
     backgroundColor: '#3b3b57',
-    width: '50%',
-    padding: 5,
+    width: '80%',
+    padding: 8,
     borderRadius: 5,
   },
   bipText: {
     color: 'ghostwhite',
     textAlign: 'center',
     fontWeight: '600',
+    fontSize: 12
   },
   disabledButton: {
-    opacity: 0.4
+    backgroundColor: '#0abb87',
+    opacity: 0.8
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#334155',
+    marginTop: 15,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 20,
+  },
+  refreshButton: {
+    marginTop: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    backgroundColor: '#3b3b57',
+  },
+  refreshButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   }
 });

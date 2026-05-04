@@ -1,4 +1,4 @@
-import AsyncStorge from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -12,8 +12,8 @@ export default function indexScreen(){
         const check = async () => {
             try{
 
-                const token = await AsyncStorge.getItem('@userToken')
-                const role = await AsyncStorge.getItem('@userRole')
+                const token = await AsyncStorage.getItem('@userToken')
+                const role = await AsyncStorage.getItem('@userRole')
 
                     if(!token || !role){
                         router.replace('/login')
@@ -43,7 +43,7 @@ export default function indexScreen(){
 
     return(
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-            <ActivityIndicator color={process.env.EXPO_PUBLIC_MAIN_COLOR} />
+            <ActivityIndicator color={'#000'} />
         </View>
     )
 }

@@ -13,7 +13,6 @@ import { Platform } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true, 
@@ -22,6 +21,7 @@ Notifications.setNotificationHandler({
 });
 
 function InnerTabs() {
+
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { user, setUser } = useUser();
@@ -58,7 +58,7 @@ function InnerTabs() {
       const old_token = user?.push_token;
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 
-      if (old_token === token)return
+      if (old_token === token) return;
       
       await setUser(Number(user?.id), { push_token: token });
       console.log('Push token atualizado:', token);
@@ -90,6 +90,7 @@ function InnerTabs() {
       headerTintColor: 'ghostwhite',
       tabBarStyle: { height: 60 },
     }}>
+
       <Tabs.Screen 
         name="shipment" 
         options={{ 
