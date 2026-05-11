@@ -1,14 +1,14 @@
 import { Box } from '@/components/ui/box';
 import { useOrders } from '@/contexts/ProductionOrdersContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-
 export default function CheckingList() {
+  
   const { checking, loadOrders } = useOrders();
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -17,8 +17,6 @@ export default function CheckingList() {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
   }, []);
-
-  console.log('só pra enviar')
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -29,10 +27,9 @@ export default function CheckingList() {
   const filteredOrders = checking.filter(order =>
     String(order.order_code).toLowerCase().includes(search.toLowerCase())
   );
-
   const EmptyChecking = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons name="clipboard-check-outline" size={80} color="#cbd5e1" />
+      <MaterialCommunityIcons name='clipboard-check-outline' size={80} color="#cbd5e1" />
       <Text style={styles.emptyTitle}>Nada para conferir</Text>
       <Text style={styles.emptySubtitle}>
         Todas as ordens já foram conferidas ou não há novas O.Ps na fila de conferência.

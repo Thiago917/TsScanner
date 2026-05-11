@@ -57,6 +57,7 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
         try {
             const response = await axios.get(`${api_url}/warehouse/list`);
             const res = response.data
+            console.log(res)
             const ordersArr: OrderType[] = [];
             const checkingArr: OrderType[] = [];
             res.forEach((item: any) => {

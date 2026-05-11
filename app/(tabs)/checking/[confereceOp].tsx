@@ -1,6 +1,6 @@
 import { useOrders } from '@/contexts/ProductionOrdersContext';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
+import * as Crypto from 'expo-crypto';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -74,8 +74,8 @@ export default function ConferenceDetail() {
     }
 
     setLoading(true);
-    try {
-      const uid = crypto.randomUUID();
+    // try {
+      const uid = Crypto.randomUUID();
       const data = {
         op: !current.isReq ? current.order_code : `REQ-${current.id}`,
         prods: items.map((item) => ({
@@ -87,22 +87,22 @@ export default function ConferenceDetail() {
 
       console.log(data)
 
-      const response = await axios.post(`${api_url}/warehouse/move-to-slot`, data);
-      const res = response.data
+    //   const response = await axios.post(`${api_url}/warehouse/move-to-slot`, data);
+    //   const res = response.data
 
-      if(res.error){
-        Alert.alert("Erro", res.message);
-        return;
-      }
-      Alert.alert('Sucesso!', 'Conferência finalizada e produtos despachados!', [
-        { text: 'Ok', onPress: () => router.replace('/warehouse') }
-      ]);
-    } catch (err) {
-      console.log(err)
-      Alert.alert('Erro', 'Problema ao salvar a conferência no servidor.');
-    } finally {
-      setLoading(false);
-    }
+    //   if(res.error){
+    //     Alert.alert("Erro", res.message);
+    //     return;
+    //   }
+    //   Alert.alert('Sucesso!', 'Conferência finalizada e produtos despachados!', [
+    //     { text: 'Ok', onPress: () => router.replace('/warehouse') }
+    //   ]);
+    // } catch (err) {
+    //   console.log(err)
+    //   Alert.alert('Erro', 'Problema ao salvar a conferência no servidor.');
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (
@@ -121,11 +121,7 @@ export default function ConferenceDetail() {
         </Text>
       </View>
 
-      <TouchableOpacity 
-        style={styles.checkArea} 
-        onPress={() => toggleCheck(index)}
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={styles.checkArea} onPress={() => toggleCheck(index)} activeOpacity={0.7}>
         <Ionicons 
           name={item.checked ? "checkmark-circle" : "radio-button-off"} 
           size={30} 

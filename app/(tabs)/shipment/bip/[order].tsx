@@ -198,7 +198,7 @@ export default function Bip() {
       setItems((prev) =>
         prev.map((p) =>
           p.product_id === product_id
-            ? { ...p, separated: (Number(p.separated) + 1).toString() }
+            ? { ...p, separated: text.includes('C') ? (Number(p.separated) + Number(p.in_box.collective_box)).toString() : (Number(p.separated) + 1).toString() }
             : p
         )
       );

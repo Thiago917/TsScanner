@@ -37,14 +37,14 @@ export const UserProvider = ({children} : {children: React.ReactNode}) => {
 
             const res = response.data
             if(res.error){
-                console.log('Erro ao buscar dados do usuário | ', res.message)
+                console.log('Erro ao buscar dados do usuário (try-catch) | ', res.message)
                 return router.replace('/login')
             }
 
             setUserState(res[0])
         }
         catch(err){
-            console.log('Erro ao buscar dados do usuário | ', err)
+            console.log('Erro ao buscar dados do usuário (try-catch) | ', err)
             return router.replace('/login')
         }
     }
