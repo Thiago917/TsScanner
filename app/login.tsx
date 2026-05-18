@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
@@ -26,6 +25,8 @@ export default function Login() {
   const passwordRef = useRef<TextInput>(null); // Ref para o input de email
   const [loading, setLoading] = useState<boolean>(false)
 
+  const api_url = process.env.EXPO_PUBLIC_API_URL;
+
   const handleLogin = async () => {
     setLoading(true)
     const {error, message, data} = await validLogin(email)
@@ -34,12 +35,25 @@ export default function Login() {
     
     try{
 
-      const response = await axios.post('https://tsgodev.tsapp.com.br/api/tsscanner/login', {
-        email: data,
-        password: password
+      console.log(`Tentando se comunicar com ${api_url}/login, com os parametros: email: ${data} e password: ${password}`)
+      // const response = await axios.post(`${api_url}/login`, {
+      //   email: data,
+      //   password: password
+      // })
+
+      const response = await fetch(`${api_url}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: data,
+          password: password
+        })
       })
 
-      const res = response.data
+      const res = await response.json()
 
       if(res.error){
         Alert.alert('Erro', `${res.message}`);
@@ -51,7 +65,6 @@ export default function Login() {
 
       await AsyncStorage.setItem('@userToken', res.token)
       await AsyncStorage.setItem('@userRole', String(res.user.departments_id))
-
 
       switch(res.user.departments_id){
         case 12:
@@ -67,7 +80,7 @@ export default function Login() {
 
     }
     catch(err){
-      console.log(err)
+      console.log(`Error: ${err}`)
     }
     finally{
       setLoading(false)
@@ -107,15 +120,16 @@ export default function Login() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>E-mail</Text>
             <TextInput
-              ref={emailRef} // Adicionado ref
+              ref={emailRef} 
               style={styles.input}
               placeholder="@tsshara.com.br"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoCorrect={false} // Desabilita correção automática para emails
+              autoCorrect={false} 
               returnKeyType="next"
+              placeholderTextColor={'#afafaf'}
             />
           </View>
 
@@ -131,6 +145,9 @@ export default function Login() {
                 secureTextEntry={!showPassword}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
+                placeholderTextColor={'#afafaf'}
+                color={'#343447'}
+              
               />
               <TouchableOpacity 
                 onPress={() => setShowPassword(!showPassword)}

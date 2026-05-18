@@ -60,7 +60,25 @@ export default {
           }
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "networkSecurityConfig": {
+              "domainConfig": {
+                "cleartextTrafficPermitted": true,
+                "domains": [
+                  "192.168.0.150", 
+                  "10.0.2.2",      
+                  "localhost"
+                ]
+              }
+            }
+          }
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true,
