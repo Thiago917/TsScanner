@@ -57,7 +57,6 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
         try {
             const response = await axios.get(`${api_url}/warehouse/list`);
             const res = response.data
-            console.log(res)
             const ordersArr: OrderType[] = [];
             const checkingArr: OrderType[] = [];
             res.forEach((item: any) => {
@@ -110,19 +109,19 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
 
         if(!user?.id)return;
 
-        let echo:any = null;
+        let echoInstance:any = null;
 
         const initializeEcho = async () => {
             loadOrders()
-            const echo = createEchoInstance();
-            echo.channel(`new-order-to-${user.id}`).listen('.orders', () => loadOrders());
+            echoInstance = createEchoInstance();
+            echoInstance.channel(`new-order-to-${user.id}`).listen('.orders', () => loadOrders());
         }
 
         initializeEcho();
 
         return () => {
-            if(echo){
-                echo.disconnect();
+            if(echoInstance){
+                echoInstance.disconnect();
                 console.log('Echo foi desconectado')
             }
         }

@@ -1,5 +1,8 @@
 import { useOrders } from '@/contexts/ProductionOrdersContext';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import axios from 'axios';
 import * as Crypto from 'expo-crypto';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -65,44 +68,77 @@ export default function ConferenceDetail() {
     setItems(updated);
   };
 
-  const finalizeChecking = async () => {
-
+  const handleSendData = async () => {
     const allChecked = items.every(item => item.checked);
     if (!allChecked) {
       Alert.alert('Pendência', 'Existem itens que ainda não foram marcados como OK.');
       return;
     }
 
+    const newConf = {
+      op: !current.isReq ? current.order_code : `REQ-${current.id}`,
+      prods: items.map((item) => ({
+        code: item.product_code,
+        picked: item.separated
+      })),
+      uid: Crypto.randomUUID(),
+      status: 'pending'
+    }
+
+    try{
+      const saved = await AsyncStorage.getItem('checking_queue');
+      const parsed = saved ? JSON.parse(saved) : [];
+      parsed.push(newConf);
+      await AsyncStorage.setItem('checking_queue', JSON.stringify(parsed));
+
+      const conn = await NetInfo.fetch();
+      
+      if(conn.isConnected){
+        finalizeChecking(newConf);
+      }
+      else{
+        Alert.alert('Sem conexão', 'Conferência salva localmente. Será enviada automaticamente quando a conexão for restabelecida.');
+      }
+    }
+    catch(err){
+      console.log('Erro no fluxo do Offline-first:', err)
+    }
+  }
+
+  const finalizeChecking = async (data: any) => {
     setLoading(true);
-    // try {
-      const uid = Crypto.randomUUID();
-      const data = {
-        op: !current.isReq ? current.order_code : `REQ-${current.id}`,
-        prods: items.map((item) => ({
-          code: item.product_code,
-          picked: item.separated
-        })),
-        uid: uid,
+    try {
+
+      const response = await axios.post(`${api_url}/warehouse/move-to-slot`, data);
+      const res = response.data
+
+      if(res.error){
+        Alert.alert("Erro", res.message);
+        return;
       }
 
-      console.log(data)
+      const saved = await AsyncStorage.getItem('checking_queue');
+      if(saved){
+        const parsed = JSON.parse(saved);
+        const filtered = parsed.filter((item: any) => item.uid !== data.uid);
+        await AsyncStorage.setItem('checking_queue', JSON.stringify(filtered));
+      }
 
-    //   const response = await axios.post(`${api_url}/warehouse/move-to-slot`, data);
-    //   const res = response.data
-
-    //   if(res.error){
-    //     Alert.alert("Erro", res.message);
-    //     return;
-    //   }
-    //   Alert.alert('Sucesso!', 'Conferência finalizada e produtos despachados!', [
-    //     { text: 'Ok', onPress: () => router.replace('/warehouse') }
-    //   ]);
-    // } catch (err) {
-    //   console.log(err)
-    //   Alert.alert('Erro', 'Problema ao salvar a conferência no servidor.');
-    // } finally {
-    //   setLoading(false);
-    // }
+      Alert.alert('Sucesso!', 'Conferência finalizada e produtos despachados!', [
+        { text: 'Ok', onPress: () => router.replace('/warehouse') }
+      ]);
+    } 
+    catch (err) {
+      console.log(err);
+      Alert.alert(
+        'Instabilidade de Rede', 
+        'Não conseguimos sincronizar com o servidor agora, mas fique tranquilo: sua conferência está salva no aparelho e será reenviada assim que a conexão for reestabelecida.',
+        [{ text: 'Entendi', onPress: () => router.replace('/warehouse') }]
+      );
+    } 
+    finally {
+      setLoading(false);
+    }
   };
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (
@@ -161,7 +197,7 @@ export default function ConferenceDetail() {
         }/>
 
       <View style={styles.footer}>
-        <TouchableOpacity key={allChecked ? 'ready-to-go' : 'not-ready'} activeOpacity={0.8} onPress={() => {if (allChecked && !loading) {finalizeChecking();}}}
+        <TouchableOpacity key={allChecked ? 'ready-to-go' : 'not-ready'} activeOpacity={0.8} onPress={() => {if (allChecked && !loading) {handleSendData();}}}
           style={{
             padding: 16,
             borderRadius: 12,

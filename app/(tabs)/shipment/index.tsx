@@ -79,6 +79,7 @@ export default function Home() {
         placeholder="Buscar pedido..."
         ref={inputRef}
         keyboardType={'numeric'}
+        placeholderTextColor={'#afafaf'}
         value={search}
         onChangeText={(text) => {
           setSearch(text);

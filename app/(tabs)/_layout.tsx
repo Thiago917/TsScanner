@@ -10,7 +10,6 @@ import { Tabs } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 
-
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,

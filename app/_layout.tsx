@@ -1,4 +1,5 @@
 import '@/global.css';
+import BackgroundSync from '@/services/BackgroundSync';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons'; // Importe os que você usa
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
@@ -16,14 +17,14 @@ export default function RootLayout() {
         ...MaterialIcons.font,
     });
 
+    BackgroundSync();
+
     useEffect(() => {
         if (loaded || error) {
-            // Esconde a Splash Screen assim que as fontes carregarem ou der erro
             SplashScreen.hideAsync();
         }
     }, [loaded, error]);
 
-    // Se as fontes ainda não carregaram, não renderiza nada (mantém a Splash)
     if (!loaded && !error) {
         return null;
     }

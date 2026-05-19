@@ -70,9 +70,10 @@ export default function Warehouse() {
         <StatusBar hidden />
         
         <TextInput
-          placeholder="Buscar pedido..."
+          placeholder="Buscar separação..."
           ref={inputRef}
           keyboardType={'numeric'}
+          placeholderTextColor={'#afafaf'}
           value={search}
           onChangeText={(text) => {
             setSearch(text);

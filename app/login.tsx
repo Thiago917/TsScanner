@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
@@ -21,39 +22,27 @@ export default function Login() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const emailRef = useRef<TextInput>(null); // Ref para o input de email
-  const passwordRef = useRef<TextInput>(null); // Ref para o input de email
+  const emailRef = useRef<TextInput>(null); 
+  const passwordRef = useRef<TextInput>(null); 
   const [loading, setLoading] = useState<boolean>(false)
 
   const api_url = process.env.EXPO_PUBLIC_API_URL;
 
   const handleLogin = async () => {
     setLoading(true)
+    
     const {error, message, data} = await validLogin(email)
 
     if(error) Alert.alert('Erro', `${message}`)
     
     try{
 
-      console.log(`Tentando se comunicar com ${api_url}/login, com os parametros: email: ${data} e password: ${password}`)
-      // const response = await axios.post(`${api_url}/login`, {
-      //   email: data,
-      //   password: password
-      // })
-
-      const response = await fetch(`${api_url}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          email: data,
-          password: password
-        })
+      const response = await axios.post(`${api_url}/login`, {
+        email: data,
+        password: password
       })
 
-      const res = await response.json()
+      const res = response.data
 
       if(res.error){
         Alert.alert('Erro', `${res.message}`);
@@ -146,8 +135,6 @@ export default function Login() {
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
                 placeholderTextColor={'#afafaf'}
-                color={'#343447'}
-              
               />
               <TouchableOpacity 
                 onPress={() => setShowPassword(!showPassword)}
@@ -250,6 +237,8 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     fontSize: 16,
+    color: '#343447'
+
   },
   eyeIcon: {
     paddingHorizontal: 12,
