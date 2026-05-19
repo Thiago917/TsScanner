@@ -97,7 +97,14 @@ export default function ConferenceDetail() {
         finalizeChecking(newConf);
       }
       else{
-        Alert.alert('Sem conexão', 'Conferência salva localmente. Será enviada automaticamente quando a conexão for restabelecida.');
+        Alert.alert('Sem conexão', 'Conferência salva localmente. Será enviada automaticamente quando a conexão for restabelecida.', [
+          {
+            'text': 'Entendi',
+            'onPress': () => {
+              router.replace('/warehouse')
+            }
+          }
+        ]);
       }
     }
     catch(err){
@@ -128,6 +135,7 @@ export default function ConferenceDetail() {
         { text: 'Ok', onPress: () => router.replace('/warehouse') }
       ]);
     } 
+    
     catch (err) {
       console.log(err);
       Alert.alert(

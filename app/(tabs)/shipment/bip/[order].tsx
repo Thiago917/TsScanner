@@ -89,6 +89,7 @@ export default function Bip() {
     });
   };
 
+
   const handleSerialInput = async (text: string) => {
     
     if (text.length === 12) {
@@ -100,8 +101,10 @@ export default function Bip() {
     if (text.length !== 13 && text.length !== 12) return;
 
     const ns_rec  = serials.map((item) => item.serial_number) 
-
-    const codes = items.map((item) => ({
+    
+    const codes = items.map((item) => (
+    {
+      
       product_code:
         item.product_code.length === 3
           ? `0${item.product_code}`
@@ -109,6 +112,7 @@ export default function Bip() {
       product_id: item.product_id,
       quantity: Number(item.quantity),
       separated: Number(item.separated),
+      collective_box: item.in_box === null || !item.in_box ? 1 : Number(item.in_box.collective_box),
       ean: item.code.ean_dv
     }));
 
@@ -142,7 +146,7 @@ export default function Bip() {
       return;
     }
     
-    const { product_id, quantity, separated } = product;
+    const { product_id, quantity, separated, collective_box } = product;
 
     if(text.slice(0, 3) === '789'){
       const ok = await confirmEAN(
@@ -155,13 +159,62 @@ export default function Bip() {
       return;
       }
     }
+
     setInputValue('');
 
     setNs((prev) => {
       const atual = prev[product_id] || '';
       const nsArray = atual.split(',').filter(Boolean);
+      const actualList = [...nsArray];
 
-      if(text.slice(0, 3) === '789' && !find_eans){
+      // 1. VALIDAÇÃO ANTES DE GERAR: Se for bip individual e já existir na lista atual
+      if (!text.includes('C') && nsArray.includes(text) && text.slice(0, 3) !== '789') {
+        Alert.alert('Aviso', `O número de série já foi bipado: ${text}`, [{
+          text: 'Ok',
+          onPress: () => inputRef.current?.focus()
+        }]);
+        return prev;
+      }
+
+      // 2. PROCESSAMENTO E VALIDAÇÃO DE DUPLICIDADE
+      if (text.includes('C')) {
+        // Mudado para -3 para ler corretamente "C001"
+        const final = Number(text.slice(-3)) * Number(collective_box);
+        const inicio = final - (Number(collective_box) - 1); 
+        const base = text.split('C')[0];
+
+        // Criamos uma lista temporária para verificar se essa caixa inteira já não foi bipada
+        for (var i = inicio; i <= final; i++) {
+          const sn = `${base}${String(i).padStart(4, '0')}`;
+          
+          // Se QUALQUER um dos números da caixa já foi bipado antes (na sessão atual ou no banco)
+          const jaBipadoDispositivo = actualList.includes(sn);
+          const jaBipadoBanco = ns_rec.includes(sn);
+
+          if (jaBipadoDispositivo || jaBipadoBanco) {
+            Alert.alert('Aviso', `A caixa contém o número de série ${sn} que já foi bipado anteriormente!`, [{
+              text: 'Ok',
+              onPress: () => inputRef.current?.focus()
+            }]);
+            return prev; // Cancela o bip da caixa inteira se achar duplicado
+          }
+
+          actualList.push(sn);
+        }
+      } else {
+        // Validação de banco para bip individual
+        if (find_duplicate && text.slice(0, 3) != '789') {
+          Alert.alert('Aviso', `O número de série ${text} já foi bipado...`, [{
+            text: 'Ok',
+            onPress: () => inputRef.current?.focus()
+          }]);
+          return prev;
+        }
+        actualList.push(text);
+      }
+      
+      // 3. VALIDAÇÕES RESTANTES (Quantidade e EAN)
+      if (text.slice(0, 3) === '789' && !find_eans) {
         Alert.alert('Aviso', `EAN do item ${checkProd} não foi encontrado.`, [{
           text: 'Ok',
           onPress: () => inputRef.current?.focus()
@@ -169,36 +222,21 @@ export default function Bip() {
         return prev;
       }
 
-      if(find_duplicate && text.slice(0, 3) != '789'){
-        Alert.alert('Aviso',`O número de série ${text} já foi bipado...`, [{
-        text: 'Ok',
-        onPress: () => inputRef.current?.focus()
-      }]);
-        return prev;
-      }
-
-      if(separated >= quantity){
-        Alert.alert('Aviso',`Bipando o item ${checkProd} a mais do que o necessário!`, [{
+      if (separated >= quantity) {
+        Alert.alert('Aviso', `Bipando o item ${checkProd} a mais do que o necessário!`, [{
           text: 'Ok',
           onPress: () => inputRef.current?.focus()
         }]);
         return prev;
       }
 
-      if (nsArray.includes(text) && text.slice(0, 3) !== '789') {
-        Alert.alert('Aviso',`O número de série já foi bipado: ${text}`, [{
-          text: 'Ok',
-          onPress: () => inputRef.current?.focus()
-        }]);
-        return prev;
-      }
-
-      const novo = [...nsArray, text].join(',');
+      // 4. SALVAMENTO DOS ESTADOS (Só chega aqui se passou em todos os testes)
+      const novo = actualList.join(',');
 
       setItems((prev) =>
         prev.map((p) =>
           p.product_id === product_id
-            ? { ...p, separated: text.includes('C') ? (Number(p.separated) + Number(p.in_box.collective_box)).toString() : (Number(p.separated) + 1).toString() }
+            ? { ...p, separated: text.includes('C') ? (Number(p.separated) + Number(collective_box)).toString() : (Number(p.separated) + 1).toString() }
             : p
         )
       );
@@ -212,6 +250,7 @@ export default function Bip() {
 
   };
 
+  console.log(ns)
   const sendData = () => {
     setLoading(true)
     if(Object.values(ns).map(item => item.split(',')).flat().length == 0){

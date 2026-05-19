@@ -1,23 +1,21 @@
 import '@/global.css';
-import BackgroundSync from '@/services/BackgroundSync';
-import { FontAwesome, MaterialIcons } from '@expo/vector-icons'; // Importe os que você usa
+import useBackgroundSync from '@/services/BackgroundSync';
+import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from 'react';
 
-// Impede a Splash Screen de sumir automaticamente
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-    // Carrega as fontes dos ícones
     const [loaded, error] = useFonts({
         ...FontAwesome.font,
         ...MaterialIcons.font,
     });
 
-    BackgroundSync();
+    useBackgroundSync(); 
 
     useEffect(() => {
         if (loaded || error) {

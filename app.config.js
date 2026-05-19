@@ -18,7 +18,10 @@ export default {
       softwareKeyboardLayoutMode: "pan",
       permissions: [
         "NOTIFICATIONS",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "INTERNET"
       ],
       adaptiveIcon: {
         backgroundColor: "#000000",
