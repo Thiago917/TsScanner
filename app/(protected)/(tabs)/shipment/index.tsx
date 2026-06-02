@@ -90,7 +90,7 @@ export default function Home() {
 
       <Box className="rounded-lg overflow-hidden flex-1 mx-2">
         <View style={styles.header}>
-          <Text style={[styles.cell, styles.headerText]}>Produto</Text>
+          <Text style={[styles.cell, styles.headerText]}>Pedido</Text>
           <Text style={[styles.cell, styles.headerText]}>Quantidade</Text>
           <Text style={[styles.cell, styles.headerText]}>Separar</Text>
         </View>
@@ -111,7 +111,7 @@ export default function Home() {
               <View style={styles.row}>
                 <View style={styles.cell}>
                   <Text style={{ fontWeight: 'bold', color: '#0abb87' }}>{item.order_code}</Text>
-                  <Text style={{ fontSize: 12, color: '#666' }}>{percent}%</Text>
+                  <Text style={{ color: '#666', fontSize: 10 }}>{item.transp}</Text>
                 </View>
 
                 <View style={styles.cell}>
@@ -133,7 +133,9 @@ export default function Home() {
                     }} asChild>
                       <TouchableOpacity style={styles.bipButton}>
                         <Text style={styles.bipText}>{sep > 0 ? 'Retomar' : 'Iniciar'}</Text>
+                        <Text style={{ fontSize: 12, color: 'ghostwhite' }}>{percent}%</Text>
                       </TouchableOpacity>
+
                     </Link>
                   )}
                 </View>
@@ -215,6 +217,8 @@ const styles = StyleSheet.create({
     width: '80%',
     padding: 8,
     borderRadius: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-around'
   },
   bipText: {
     color: 'ghostwhite',

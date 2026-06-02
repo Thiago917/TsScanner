@@ -11,75 +11,94 @@ export type UserType = {
     push_token: string;
 }
 
-type User = {
+type UserContextData = {
     user: UserType | null;
-    loadUser: () => Promise<void> 
-    setUser: (id: number, updates: Partial<UserType>) => void
+    loading: boolean;
+    loadUser: () => Promise<void>;
+    setUser: (id: number, updates: Partial<UserType>) => Promise<void>;
 }
 
-const UserContext = createContext<User>({} as User);
+const UserContext = createContext<UserContextData>({} as UserContextData);
  
-export const UserProvider = ({children} : {children: React.ReactNode}) => {
-
+export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUserState] = useState<UserType | null>(null);
-    const api_url = process.env.EXPO_PUBLIC_API_URL
+    const [loading, setLoading] = useState(true);
+    const api_url = process.env.EXPO_PUBLIC_API_URL;
 
     const loadUser = async () => {
-        try{
-            const token = await AsyncStorage.getItem('@userToken')
+        try {
+            setLoading(true);
+            const token = await AsyncStorage.getItem('@userToken');
 
-            if(!token) return router.replace('/login');
-            const response = await axios.get(`${api_url}/me`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-
-            const res = response.data
-            if(res.error){
-                console.log('Erro ao buscar dados do usuário (try-catch) | ', res.message)
-                return router.replace('/login')
+            if (!token) {
+                setUserState(null);
+                return router.replace('/login');
             }
 
-            setUserState(res[0])
-        }
-        catch(err){
-            console.log('Erro ao buscar dados do usuário (try-catch) | ', err)
-            return router.replace('/login')
-        }
-    }
+            const response = await axios.get(`${api_url}/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
+            const res = response.data;
+            if (res.error) {
+                console.log('Erro ao buscar dados do usuário | ', res.message);
+                setUserState(null);
+                return router.replace('/login');
+            }
+
+            const userData = Array.isArray(res) ? res[0] : res;
+            setUserState(userData);
+
+        } catch (err) {
+            console.log('Erro ao buscar dados do usuário (catch) | ', err);
+            setUserState(null);
+            return router.replace('/login');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // FUNÇÃO SETUSER CORRIGIDA E ADAPTADA
     const setUser = async (id: number, updates: Partial<UserType>) => {
-        if(!user) return;
-        const prev = user;
-        try{
-            const response = await axios.patch(`${api_url}/update-me/${id}`, updates)
-            const res = response.data
+        if (!user) return;
+        
+        const previousUser = user; 
 
-            if(res.error){
-                console.log('Erro ao atualizar dados do usuário | ', res.message)
-                setUserState(prev);
+        try {
+            const response = await axios.patch(`${api_url}/update-me/${id}`, updates);
+            const res = response.data;
+
+            if (res.error) {
+                console.log('Erro ao atualizar dados do usuário na API | ', res.message);
+                setUserState(previousUser); 
                 return;
             }
 
-            setUserState(res)
+            setUserState((prev) => {
+                if (!prev) return null;
+                const dadosAtualizados = (res && typeof res === 'object' && !res.message) ? res : updates;
+
+                return {
+                    ...prev,
+                    ...dadosAtualizados
+                };
+            });
+
+        } catch (err) {
+            setUserState(previousUser);
+            console.log('Erro na requisição de atualização do usuário | ', err);
         }
-        catch(err){
-            setUserState(prev);
-            console.log('Erro ao atualizar dados do usuário | ', err)
-        }
-    }
+    };
     
     useEffect(() => {
-        loadUser()
-    }, [])
+        loadUser();
+    }, []);
 
-
-    return(
-        <UserContext.Provider value={{user, loadUser, setUser}}>
+    return (
+        <UserContext.Provider value={{ user, loading, loadUser, setUser }}>
             {children}
         </UserContext.Provider>
-    )
-}
+    );
+};
 
-export const useUser = () => useContext(UserContext)
+export const useUser = () => useContext(UserContext);

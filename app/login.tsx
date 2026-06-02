@@ -29,6 +29,7 @@ export default function Login() {
   const api_url = process.env.EXPO_PUBLIC_API_URL;
 
   const handleLogin = async () => {
+
     setLoading(true)
     
     const {error, message, data} = await validLogin(email)
@@ -36,7 +37,7 @@ export default function Login() {
     if(error) Alert.alert('Erro', `${message}`)
     
     try{
-
+      // Alert.alert(`Ta chamando a rota ${api_url}/login com os parametros: email: ${data}, password: ${password}`)
       const response = await axios.post(`${api_url}/login`, {
         email: data,
         password: password
@@ -66,7 +67,6 @@ export default function Login() {
           router.replace('/shipment')
           break;
       }
-
     }
     catch(err){
       console.log(`Error: ${err}`)

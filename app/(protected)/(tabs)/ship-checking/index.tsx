@@ -1,39 +1,41 @@
 import { Box } from '@/components/ui/box';
-import { useOrders } from '@/contexts/ProductionOrdersContext';
+import { useSalesOrders } from '@/contexts/salesOrdersContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // 👈 Importado
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as NavigationBar from 'expo-navigation-bar';
-import { Link, useFocusEffect } from 'expo-router'; // 👈 Adicionado useFocusEffect
+import { Link, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-export default function CheckingList() {
-  const { checking, loadOrders } = useOrders();
+export default function ShipmentCheckingList() {
+  const { saleChecking, loadSalesOrders } = useSalesOrders();
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [localPendingUids, setLocalPendingUids] = useState<string[]>([]); // 👈 Estado para armazenar OPs pendentes locais
+  const [localPendingUids, setLocalPendingUids] = useState<string[]>([]);
+  const [page, setPage] = useState<number>(1);
+
+  const itemsPerPage = 4;
 
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
   }, []);
 
-  // 🔄 Busca a fila local toda vez que o operador entra/foca nessa tela
   useFocusEffect(
     useCallback(() => {
       checkLocalPendingQueue();
+      loadSalesOrders()
     }, [])
   );
 
   const checkLocalPendingQueue = async () => {
     try {
-      const saved = await AsyncStorage.getItem('checking_queue');
+      const saved = await AsyncStorage.getItem('shipment_checking_queue');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Mapeia todas as OPs locais que estão com status de 'pending' ou salvas na fila
-        const pendingOps = parsed.map((item: any) => String(item.op));
-        setLocalPendingUids(pendingOps);
+        const pendingOrders = parsed.map((item: any) => String(item.order));
+        setLocalPendingUids(pendingOrders);
       } else {
         setLocalPendingUids([]);
       }
@@ -44,13 +46,20 @@ export default function CheckingList() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadOrders();
-    await checkLocalPendingQueue(); // 👈 Atualiza também o status offline no pull-to-refresh
+    await loadSalesOrders();
+    await checkLocalPendingQueue();
     setRefreshing(false);
   };
 
-  const filteredOrders = checking.filter(order =>
+  const filteredOrders = saleChecking.filter(order =>
     String(order.order_code).toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage) || 1;
+
+  const paginated = filteredOrders.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
   );
 
   const EmptyChecking = () => (
@@ -58,10 +67,10 @@ export default function CheckingList() {
       <MaterialCommunityIcons name='clipboard-check-outline' size={80} color="#cbd5e1" />
       <Text style={styles.emptyTitle}>Nada para conferir</Text>
       <Text style={styles.emptySubtitle}>
-        Todas as ordens já foram conferidas ou não há novas O.Ps na fila de conferência.
+        Todos os pedidos já foram conferidos ou não há novos pedidos na fila de conferência.
       </Text>
       <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-        <Text style={styles.refreshButtonText}>Atualizar lista</Text>
+        <Text style={styles.refreshButtonText}>Atualizar Lista</Text>
       </TouchableOpacity>
     </View>
   );
@@ -70,9 +79,12 @@ export default function CheckingList() {
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar hidden />
       <TextInput
-        placeholder="Buscar O.P para conferência..."
+        placeholder="Buscar pedido para conferência..."
         value={search}
-        onChangeText={setSearch}
+        onChangeText={(text) => {
+          setSearch(text);
+          setPage(1);
+        }}
         keyboardType="numeric"
         style={styles.search}
         placeholderTextColor={'#afafaf'}
@@ -80,53 +92,51 @@ export default function CheckingList() {
 
       <Box className="rounded-lg overflow-hidden flex-1">
         <View style={styles.header}>
-          <Text style={[styles.cell, styles.headerText]}>O.P</Text>
+          <Text style={[styles.cell, styles.headerText]}>Pedido</Text>
           <Text style={[styles.cell, styles.headerText]}>Quantidade</Text>
           <Text style={[styles.cell, styles.headerText]}>Ação</Text>
         </View>
 
         <FlatList
-          data={filteredOrders}
+          data={paginated}
           keyExtractor={(item) => String(item.id)}
           onRefresh={onRefresh}
           refreshing={refreshing}
           ListEmptyComponent={<EmptyChecking />}
           contentContainerStyle={filteredOrders.length === 0 ? { flex: 1 } : { paddingBottom: 100 }}
           renderItem={({ item }) => {
-            // 🧠 Valida se esta linha atual bate com alguma OP salva localmente esperando internet
-            const currentOpString = !item.isReq ? String(item.order_code) : `REQ-${item.id}`;
-            const isOfflinePending = localPendingUids.includes(currentOpString);
+            const currentOrderString = String(item.order_code);
+            const isOfflinePending = localPendingUids.includes(currentOrderString);
 
             return (
               <View style={[styles.row, isOfflinePending && styles.rowPending]}>
                 <View style={styles.cell}>
                   <Text style={{ fontWeight: 'bold', color: isOfflinePending ? '#d97706' : '#0abb87' }}>
-                    {!item.isReq ? item.order_code : `REQ-${item.id.toString().padStart(5, '0')}`}
+                    {item.order_code}
                   </Text>
                   
-                  {/* ⚡ BADGE VISUAL DE ALERTA SE ESTIVER OFFLINE */}
                   {isOfflinePending && (
                     <View style={styles.badgePending}>
                       <MaterialCommunityIcons name="cloud-off-outline" size={10} color="#fff" />
                       <Text style={styles.badgeText}>Aguardando Rede</Text>
                     </View>
                   )}
+                    <Text style={{ color: '#666', fontSize: 10, top: 5 }}>{item.transp}</Text>
                 </View>
 
                 <View style={styles.cell}>
                   <Text style={{ fontSize: 12, color: isOfflinePending ? '#78350f' : '#000' }}>
-                    {!item.isReq ? Number(item.amount).toFixed(0) : item.items.length}
+                    {item.items.length}
                   </Text>
                 </View>
 
                 <View style={styles.cell}>
                   {isOfflinePending ? (
-                    // Se já foi concluída e está travada na fila offline, bloqueia o botão para evitar re-conferência
                     <View style={[styles.actionButton, { backgroundColor: '#94a3b8', opacity: 0.7 }]}>
                       <Text style={styles.actionText}>Concluída</Text>
                     </View>
                   ) : (
-                    <Link href={{ pathname: '/checking/[confereceOp]', params: { confereceOp: !item.isReq ? item.order_code : item.id } }} asChild>
+                    <Link href={{ pathname: '/(protected)/shipment/conf/[sale]', params: { sale: String(item.order_code) } }} asChild>
                       <TouchableOpacity style={styles.actionButton}>
                         <Text style={styles.actionText}>Conferir</Text>
                       </TouchableOpacity>
@@ -138,6 +148,20 @@ export default function CheckingList() {
           }}
         />
       </Box>
+
+      {filteredOrders.length > 0 && totalPages > 1 && (
+        <View style={styles.pagination}>
+          <Pressable disabled={page === 1} onPress={() => setPage(page - 1)}>
+            <Text style={page === 1 ? styles.disabled : styles.button}>Anterior</Text>
+          </Pressable>
+          <Text style={styles.pageInfo}>
+            {page} de {totalPages}
+          </Text>
+          <Pressable disabled={page === totalPages} onPress={() => setPage(page + 1)}>
+            <Text style={page === totalPages ? styles.disabled : styles.button}>Próximo</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -167,15 +191,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#e8e8e8'
   },
-  // 🎨 Estilos novos para diferenciar o item pendente
   rowPending: {
-    backgroundColor: '#fef3c7', // Fundo amarelado suave
+    backgroundColor: '#fef3c7',
     borderBottomColor: '#fde68a',
   },
   badgePending: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#d97706', // Laranja escuro de aviso
+    backgroundColor: '#d97706',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -230,14 +253,37 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   refreshButton: {
-    marginTop: 20,
+    marginTop: 25,
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    backgroundColor: '#3b3b57',
   },
   refreshButtonText: {
-    color: '#3b3b57',
-    fontWeight: '700',
-  }
+    color: 'ghostwhite',
+    fontWeight: '700'
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  button: {
+    color: '#0abb87',
+    fontWeight: '600',
+  },
+  disabled: {
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  pageInfo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
 });

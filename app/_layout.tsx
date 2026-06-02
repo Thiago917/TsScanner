@@ -1,3 +1,4 @@
+import { NetInfoProvider } from '@/contexts/NetInfoContext';
 import '@/global.css';
 import useBackgroundSync from '@/services/BackgroundSync';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
@@ -9,13 +10,16 @@ import { useEffect } from 'react';
 
 SplashScreen.preventAutoHideAsync();
 
+function BackgroundSyncApp() {
+    useBackgroundSync();
+    return null;
+}
+
 export default function RootLayout() {
     const [loaded, error] = useFonts({
         ...FontAwesome.font,
         ...MaterialIcons.font,
     });
-
-    useBackgroundSync(); 
 
     useEffect(() => {
         if (loaded || error) {
@@ -28,12 +32,13 @@ export default function RootLayout() {
     }
 
     return (
-        <>
+        <NetInfoProvider>
+            <BackgroundSyncApp />
             <StatusBar style="light" />
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name='index' />
                 <Stack.Screen name='login' />
             </Stack>
-        </>
+        </NetInfoProvider>
     );
 }

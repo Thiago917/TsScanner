@@ -14,7 +14,7 @@ const api_url = process.env.EXPO_PUBLIC_API_URL;
 const main_color = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
 export default function ConferenceDetail() {
-  const { confereceOp } = useLocalSearchParams<{ confereceOp: string }>();
+  const { conferenceOp } = useLocalSearchParams<{ conferenceOp: string }>();
   const router = useRouter();
   
   const [items, setItems] = useState<any[]>([]);
@@ -43,7 +43,7 @@ export default function ConferenceDetail() {
     try {
 
       const now = await getDate(new Date());
-      const filter = checking.find((op) => !op.isReq ? String(op.order_code) === String(confereceOp) : String(op.id) === String(confereceOp));
+      const filter = checking.find((op) => !op.isReq ? String(op.order_code) === String(conferenceOp) : String(op.id) === String(conferenceOp));
       if (filter) {
         const orderId = !filter.isReq ? filter.order_code : `REQ-${filter.id}`;
         await setOrders(orderId, { "status": 7 , 'checking_at': now });
@@ -56,7 +56,7 @@ export default function ConferenceDetail() {
 
     } catch (err) {
       console.log(err);
-      Alert.alert('Erro', `Erro ao carregar itens da O.P ${confereceOp}.`);
+      Alert.alert('Erro', `Erro ao carregar itens da O.P ${conferenceOp}.`);
     } finally {
       setLoading(false);
     }
@@ -97,14 +97,18 @@ export default function ConferenceDetail() {
         finalizeChecking(newConf);
       }
       else{
-        Alert.alert('Sem conexão', 'Conferência salva localmente. Será enviada automaticamente quando a conexão for restabelecida.', [
-          {
-            'text': 'Entendi',
-            'onPress': () => {
-              router.replace('/warehouse')
+        setTimeout(() => {
+          setLoading(true)
+          Alert.alert('Sem conexão', 'Não se preocupe, a conferência será enviada automaticamente quando a conexão for restabelecida.', [
+            {
+              'text': 'Entendi',
+              'onPress': () => {
+                router.replace('/warehouse')
+              }
             }
-          }
-        ]);
+          ]);
+          setLoading(false)
+        }, 1000)
       }
     }
     catch(err){
@@ -131,11 +135,14 @@ export default function ConferenceDetail() {
         await AsyncStorage.setItem('checking_queue', JSON.stringify(filtered));
       }
 
+      const now = await getDate(new Date())
+      const orderId = !current.isReq ? current.order_code : `REQ-${current.id}`;
+      setOrders(orderId, {"checked_at": now });
       Alert.alert('Sucesso!', 'Conferência finalizada e produtos despachados!', [
-        { text: 'Ok', onPress: () => router.replace('/warehouse') }
+        { text: 'Ok', onPress: () => router.replace('/(protected)/(tabs)/checking') }
       ]);
     } 
-    
+
     catch (err) {
       console.log(err);
       Alert.alert(
@@ -195,7 +202,7 @@ export default function ConferenceDetail() {
       
       <View style={styles.headerTitle}>
         <Text style={styles.h1}>
-          {!current.isReq ? 'Conferência OP:': 'Conferência da:'} <Text style={{ color: '#0abb87' }}>#{!current.isReq ? confereceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
+          {!current.isReq ? 'Conferência OP:': 'Conferência da:'} <Text style={{ color: '#0abb87' }}>#{!current.isReq ? conferenceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
         </Text>
       </View>
 

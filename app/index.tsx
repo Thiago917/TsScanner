@@ -22,13 +22,13 @@ export default function indexScreen(){
 
                 switch(role){
                     case '12':
-                        router.replace('/shipment')
+                        router.replace('/(protected)/(tabs)/shipment')
                         break;
                     case '6':
-                        router.replace('/warehouse')
+                        router.replace('/(protected)/(tabs)/warehouse')
                         break;
                     default:
-                        router.replace('/shipment')
+                        router.replace('/(protected)/(tabs)/shipment')
                         break;
                     }
             }

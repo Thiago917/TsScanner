@@ -15,5 +15,7 @@ export const createEchoInstance = () => {
         forceTLS: true,
         enabledTransports: ['ws', 'wss'],
         disableStats: true,
+        activityTimeout: 30000,
+        pongTimeout: 15000,
     });
 };

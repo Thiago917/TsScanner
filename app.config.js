@@ -29,18 +29,19 @@ export default {
         backgroundImage: "./assets/images/app-icon-background.png"
       },
       edgeToEdgeEnabled: true,
-      intentFilter: [
+      intentFilters: [
         {
           action: "VIEW",
+          autoVerify: false,
+          categories: [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
           data: [
             {
               scheme: "tsshara",
               host: "bip"
             }
-          ],
-          category: [
-            "BROWSABLE",
-            "DEFAULT"
           ]
         }
       ]
@@ -75,7 +76,8 @@ export default {
                 "domains": [
                   "192.168.0.150", 
                   "10.0.2.2",      
-                  "localhost"
+                  "localhost",
+                  "tsgodev.tsapp.com.br"
                 ]
               }
             }
@@ -89,6 +91,7 @@ export default {
     },
     extra: {
       router: {},
+      disabled: {},
       eas: {
         projectId: "47342b13-5c85-412f-aa05-a06c4dd07b0a"
       }

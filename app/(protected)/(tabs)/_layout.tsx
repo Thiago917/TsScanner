@@ -1,14 +1,14 @@
+import { WifiBadge } from "@/component/WifiBadge";
 import { ProductionOrdersProvider, useOrders } from "@/contexts/ProductionOrdersContext";
-import { SalesOrdersProvider } from "@/contexts/salesOrdersContext";
+import { SalesOrdersProvider, useSalesOrders } from "@/contexts/salesOrdersContext";
 import { UserProvider, useUser } from "@/contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Tabs } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { useCallback, useEffect } from "react";
+import { ActivityIndicator, Platform, View } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -20,14 +20,14 @@ Notifications.setNotificationHandler({
 });
 
 function InnerTabs() {
-
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { user, setUser } = useUser();
+  const { user, setUser, loading } = useUser();
   const { checking, orders } = useOrders();
+  const { salesOrders, saleChecking } = useSalesOrders()
+
+  const userRole = user?.departments_id?.toString() || '';
 
   const registerForPushNotificationsAsync = useCallback(async () => {
-    if (!Device.isDevice) return;
+    if (!Device.isDevice || !user?.id) return;
 
     const projectId = Constants?.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
@@ -54,33 +54,35 @@ function InnerTabs() {
           lightColor: '#FF231F7C',
         });
       }
+      
       const old_token = user?.push_token;
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 
       if (old_token === token) return;
       
-      await setUser(Number(user?.id), { push_token: token });
-      console.log('Push token atualizado:', token);
+      await setUser(Number(user.id), { push_token: token });
+      console.log('Push token atualizado com sucesso:', token);
     
     } catch (error) {
       console.error('Erro ao registrar push token:', error);
     }
-  }, [user, setUser]);
+  }, [user?.id, user?.push_token, setUser]);
 
   useEffect(() => {
-    AsyncStorage.getItem('@userRole').then((val) => {
-      setRole(val);
-      setLoading(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (user?.id) {
+    if (!loading && user?.id) {
       registerForPushNotificationsAsync();
     }
-  }, [user?.id, registerForPushNotificationsAsync]);
+  }, [loading, user?.id, registerForPushNotificationsAsync]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a27' }}>
+        <ActivityIndicator size="large" color="#ffa704" />
+      </View>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <Tabs screenOptions={{ 
@@ -93,9 +95,12 @@ function InnerTabs() {
       <Tabs.Screen 
         name="shipment" 
         options={{ 
-          href: (role === '12' || role === '-1') ? '/shipment' : null,
-          title: 'EXPEDIÇÃO',
+          href: (userRole === '12' || userRole === '-1') ? '/shipment' : null,
+          title: 'Separação',
           headerTitleAlign: 'center',
+          headerRight: () => <WifiBadge />,
+          tabBarBadge: salesOrders.length > 0 ? salesOrders.length : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
           tabBarIcon: ({color}) => <Ionicons name='storefront-outline' size={15} color={color} />
         }}
       />
@@ -103,9 +108,10 @@ function InnerTabs() {
       <Tabs.Screen 
         name="warehouse" 
         options={{ 
-          href: (role === '6' || role === '-1') ? '/warehouse' : null,
+          href: (userRole === '6' || userRole === '-1') ? '/warehouse' : null,
           title: 'Separação',
           headerTitleAlign: 'center',
+          headerRight: () => <WifiBadge />,
           tabBarBadge: orders.length > 0 ? orders.length : undefined,
           tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
           tabBarIcon: ({color}) => <Ionicons name='barcode-outline' size={18} color={color}/>
@@ -115,23 +121,39 @@ function InnerTabs() {
       <Tabs.Screen 
         name="checking" 
         options={{ 
-          href: (role === '6' || role === '-1') ? '/checking' : null,
+          href: (userRole === '6' || userRole === '-1') ? '/checking' : null,
           title: 'Conferência',
+          headerRight: () => <WifiBadge />,
           headerTitleAlign: 'center',
           tabBarBadge: checking.length > 0 ? checking.length : undefined,
           tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
           tabBarIcon: ({color}) => <Ionicons name='checkmark-circle-outline' size={18} color={color}/>
         }}
       />
+
+      <Tabs.Screen 
+        name="ship-checking" 
+        options={{ 
+          href: (userRole === '12' || userRole === '-1') ? '/ship-checking' : null,
+          title: 'Conferência',
+          headerRight: () => <WifiBadge />,
+          headerTitleAlign: 'center',
+          tabBarBadge: saleChecking.length > 0 ? saleChecking.length : undefined,
+          tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
+          tabBarIcon: ({color}) => <Ionicons name='file-tray-full-outline' size={18} color={color}/>
+        }} 
+      />
           
       <Tabs.Screen 
         name="profile" 
         options={{ 
           title: 'Meu perfil',
+          headerRight: () => <WifiBadge />,
           headerTitleAlign: 'center',
           tabBarIcon: ({color}) => <Ionicons name='person-circle' size={18} color={color}/>
         }} 
       />
+
     </Tabs> 
   );
 }

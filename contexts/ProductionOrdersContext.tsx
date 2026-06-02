@@ -72,16 +72,17 @@ export const ProductionOrdersProvider = ({children} : {children: React.ReactNode
             setOrdersState(ordersArr);
             setCheckingState(checkingArr);
             }
-        catch(err) {
+        catch(err:any) {
             Alert.alert('Erro', `Erro ao carregar pedidos de almoxarifado... ${err}`);
             console.log(err);
         }
     }
 
     const setOrders = async (op: string, updates: Partial<OrderType>) => {
+        
         if(!orders) return;
         const prev = orders;
-            
+        
         try {
             
             const response = await axios.patch(`${api_url}/warehouse/update-op/${op}`, updates)

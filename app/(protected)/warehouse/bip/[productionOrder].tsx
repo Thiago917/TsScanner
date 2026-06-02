@@ -11,8 +11,8 @@ export default function WarehouseBip() {
   const inputRef = useRef<TextInput | null>(null);
   const { productionOrder } = useLocalSearchParams<{ productionOrder: string }>();
 
-  const [items, setItems] = useState<any[]>([]); // Inicializado como array
-  const [current, setCurrent] = useState<any>({}); // Inicializado como objeto
+  const [items, setItems] = useState<any[]>([]); 
+  const [current, setCurrent] = useState<any>({}); 
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [checking, setChecking] = useState<boolean>(false);
@@ -20,11 +20,22 @@ export default function WarehouseBip() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempQty, setTempQty] = useState<string>('');
-  const {setOrders, orders} = useOrders()
+  const {setOrders, orders, loadOrders} = useOrders()
 
   useEffect(() => {
-    loadData();
+    const fetchData = async () => {
+      setLoading(true);
+      await loadOrders();
+      setLoading(false);
+    };
+    fetchData();
   }, []);
+
+  useEffect(() => {
+    if (orders && orders.length > 0) {
+      loadData();
+    }
+  }, [orders]);
 
   const getDate = async (now: Date) => {
     const mysqlDateTime = now.getFullYear() + '-' +
@@ -37,7 +48,6 @@ export default function WarehouseBip() {
   }
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const opDetails = orders.find((o) => !o.isReq ? String(o.order_code) === String(productionOrder) : String(o.id) === String(productionOrder));
       if (!opDetails) {
@@ -53,7 +63,6 @@ export default function WarehouseBip() {
         picked: Number(item.separated) || 0, 
       }));
 
-      formattedItems
       setItems(formattedItems);
 
       var orderId = !opDetails.isReq ? opDetails.order_code : `REQ-${opDetails.id}`; 
@@ -69,8 +78,6 @@ export default function WarehouseBip() {
     } catch (err) {
         Alert.alert('Erro', `Erro ao carregar itens da O.P ${productionOrder}`);
         console.error("Erro ao carregar dados da O.P:", err);
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -136,7 +143,7 @@ export default function WarehouseBip() {
       router.replace('/warehouse')
 
       const now = await getDate(new Date());
-      setOrders(productionOrder, { "status": 7, "checked_at": now });
+      setOrders(!current.isReq ? productionOrder : `REQ-${current.id}`, { "status": 7, "separated_at": now });
 
     } catch (err) {
       Alert.alert('Erro', `Erro no envio da separação para a conferência | ${err}`)

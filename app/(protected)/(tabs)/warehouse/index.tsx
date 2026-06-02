@@ -109,7 +109,7 @@ export default function Warehouse() {
                         </View>
 
                         <View style={styles.cell}>
-                            <Link href={{pathname:'/warehouse/bip/[productionOrder]', params:{
+                            <Link href={{pathname:'/(protected)/warehouse/bip/[productionOrder]', params:{
                                 productionOrder: !item.isReq ? String(item.order_code) : item.id,
                             }}} asChild>
                                 <TouchableOpacity style={styles.bipButton}>
