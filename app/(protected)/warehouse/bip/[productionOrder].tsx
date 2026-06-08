@@ -1,14 +1,17 @@
 import { useOrders } from '@/contexts/ProductionOrdersContext';
 import { Ionicons } from '@expo/vector-icons';
+import { HeaderBackButton } from '@react-navigation/elements';
 import axios from 'axios';
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, BackHandler, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const api_url = process.env.EXPO_PUBLIC_API_URL;
 
 export default function WarehouseBip() {
   const inputRef = useRef<TextInput | null>(null);
+  const navigation = useNavigation();
+
   const { productionOrder } = useLocalSearchParams<{ productionOrder: string }>();
 
   const [items, setItems] = useState<any[]>([]); 
@@ -20,6 +23,7 @@ export default function WarehouseBip() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempQty, setTempQty] = useState<string>('');
+  const [pickedAll, setPickedAll] = useState<boolean>(false);
   const {setOrders, orders, loadOrders} = useOrders()
 
   useEffect(() => {
@@ -31,6 +35,23 @@ export default function WarehouseBip() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: (props: any) => (
+        <HeaderBackButton {...props} onPress={handleBackAttempt} />
+      ),
+    });
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackAttempt
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [navigation]);
+  
   useEffect(() => {
     if (orders && orders.length > 0) {
       loadData();
@@ -45,6 +66,18 @@ export default function WarehouseBip() {
         String(now.getMinutes()).padStart(2, '0') + ':' +
         String(now.getSeconds()).padStart(2, '0');
     return mysqlDateTime;        
+  }
+
+  const handleBackAttempt = (): boolean => {
+    Alert.alert('Aviso de Saída', 'Você tem certeza que deseja sair?', [
+      {
+        text: 'Cancelar', style: 'cancel', onPress: () => {}
+      },
+      {
+        text: 'Sair e perder progresso', style: 'destructive', onPress: () => {router.back()}
+      }
+    ])
+    return true;
   }
 
   const loadData = async () => {
@@ -102,13 +135,17 @@ export default function WarehouseBip() {
       updated[itemIndex].picked = Number(itemToUpdate.quantity) || 0;
 
       if (Number(itemToUpdate.picked) > Number(itemToUpdate.quantity)) {
-        // itemToUpdate.picked = Number(itemToUpdate.picked) + 1;
-      // } else {
         Alert.alert('Aviso', `Quantidade máxima do item ${itemToUpdate.product_code} já atingida.`);
       }
+      const picked = updated.reduce((sum, item) => sum + (Number(item.picked) || 0 ), 0)
+      const total = updated.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
 
-      const allItemsPicked = updated.every(item => Number(item.picked) >= Number(item.quantity));
-      setSubmitting(!allItemsPicked);
+      if(picked === total){
+        setPickedAll(true);
+      }
+
+      // const allItemsPicked = updated.every(item => Number(item.picked) >= Number(item.quantity));
+      setSubmitting(false);
       return updated;
     });
 
@@ -131,6 +168,11 @@ export default function WarehouseBip() {
         }))
       }
 
+      const picked = items.reduce((sum, item) => sum + (Number(item.picked) || 0 ), 0)
+      console.log(picked)
+      if(picked === 0){
+        return Alert.alert('Atenção', 'Você não bipou nenhum produto')
+      }
       const response = await axios.post(`${api_url}/warehouse/separation`, data);
       const res = response.data;
 
@@ -139,11 +181,11 @@ export default function WarehouseBip() {
         return;
       }
 
-      Alert.alert('Sucesso', 'Pedido enviado para conferência.')
+      Alert.alert('Sucesso', `${res.message}`)
       router.replace('/warehouse')
 
       const now = await getDate(new Date());
-      setOrders(!current.isReq ? productionOrder : `REQ-${current.id}`, { "status": 7, "separated_at": now });
+      setOrders(!current.isReq ? productionOrder : `REQ-${current.id}`, {"separated_at": now });
 
     } catch (err) {
       Alert.alert('Erro', `Erro no envio da separação para a conferência | ${err}`)
@@ -183,39 +225,53 @@ export default function WarehouseBip() {
     setEditingIndex(null);
   };
   
+  
   const renderItem = ({ item, index }: { item: any; index: number }) => { 
-  const percentage = Number(item.quantity) > 0 ? ((Number(item.separated) / Number(item.quantity)) * 100).toFixed(0) : 0;
-  const isItemDisabled = Number(item.picked) === 0; 
+    const percentage = Number(item.quantity) > 0 ? ((Number(item.separated) / Number(item.quantity)) * 100).toFixed(0) : 0;
+    const isItemDisabled = Number(item.picked) === 0; 
 
-  return (
+    return (
 
-    <View style={styles.row}>
-      <View style={styles.cell}>
-        <Text style={styles.bold}>{item.product_code}</Text>
-        <Text style={{ color: Number(percentage) >= 100 ? '#0abb87' : '#666' }}>
-          {percentage}%
-        </Text>
-      </View>
-
-      <View style={styles.cell}>
-        <Text style={{ fontSize: 12, color: '#3b3b57' }}>Local: {item.place}</Text>
-        <Text>Qtd: {Number(item.picked).toFixed(0)} / {Number(item.quantity).toFixed(0)}</Text>
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.cell, { alignItems: 'flex-end' }]} 
-        onPress={() => openEditModal(index)} 
-        disabled={isItemDisabled}
-      >
-        <View style={[styles.editButton, isItemDisabled && { opacity: 0.5 }]}>
-          <Ionicons name="create-outline" size={20} color="#3b3b57" />
-          <Text style={styles.editText}>Editar</Text>
+      <View style={styles.row}>
+        <View style={styles.cell}>
+          <Text style={styles.bold}>{item.product_code}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {(item.description && item.description.length >= 22) ? (
+              <>
+                  <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
+                    <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+                  </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+              </>
+            )}
+          </View>
+          <Text style={{ color: Number(percentage) >= 100 ? '#0abb87' : '#666' }}>
+            {percentage}%
+          </Text>
         </View>
-      </TouchableOpacity>
-    </View>
-  );
 
+        <View style={styles.cell}>
+          <Text style={{ fontSize: 12, color: '#3b3b57' }}>Local: {item.place}</Text>
+          <Text>Qtd: {Number(item.picked).toFixed(0)} / {Number(item.quantity).toFixed(0)}</Text>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.cell, { alignItems: 'flex-end' }]} 
+          onPress={() => openEditModal(index)} 
+          disabled={isItemDisabled}
+        >
+          <View style={[styles.editButton, isItemDisabled && { opacity: 0.5, backgroundColor: '#c0c0c0' }]}>
+            <Ionicons name="create-outline" size={20} color="#3b3b57" />
+            <Text style={styles.editText}>Editar</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
   };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -224,11 +280,12 @@ export default function WarehouseBip() {
       </View>
     );
   }
+
   return (
     <View style={{ flex: 1 }}>
       <TextInput autoFocus ref={inputRef} style={styles.hiddenInput} value={inputValue} showSoftInputOnFocus={false} onBlur={() => setTimeout(() => inputRef.current?.focus(), 50)} onChangeText={handleBarcodeInput} />
 
-      <Text style={styles.h1}>
+      <Text style={styles.h1} onPress={() => {Alert.alert('Detalhes de produção', `${current.manufacture_cod} - ${current.manufacture_desc}`)}}>
         O.P: <Text style={{ color: '#0abb87' }}>#{!current.isReq ? productionOrder : `REQ-${productionOrder}`}</Text>
       </Text>
 
@@ -242,7 +299,7 @@ export default function WarehouseBip() {
               {checking ? (
                 <ActivityIndicator color={'#fff'} />
               ) : (
-                <Text style={styles.submitText}>Mandar para Conferência</Text>
+                <Text style={styles.submitText}>{pickedAll ? 'Mandar para Conferência' : 'Separar Parcialmente'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -331,7 +388,7 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ddd',
+    backgroundColor: '#0abb87',
     padding: 6,
     borderRadius: 5,
   },

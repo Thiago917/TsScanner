@@ -1,15 +1,17 @@
 import { useSalesOrders } from '@/contexts/salesOrdersContext';
 import Slider from '@react-native-community/slider';
+import { HeaderBackButton } from '@react-navigation/elements';
 import axios from "axios";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, BackHandler, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const api_url = process.env.EXPO_PUBLIC_API_URL
 
 export default function Bip() {
 
   const router = useRouter();
+  const navigation = useNavigation();
   const inputRef = useRef<TextInput | null>(null);
   const { salesOrders, updateSalesOrders } = useSalesOrders();
 
@@ -33,6 +35,35 @@ export default function Bip() {
   }, []);
 
   useEffect(() => {
+    navigation.setOptions({
+      headerLeft: (props: any) => (
+        <HeaderBackButton {...props} onPress={handleBackAttempt} />
+      ),
+    });
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackAttempt
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [navigation]);
+
+  const handleBackAttempt = (): boolean => {
+    Alert.alert('Aviso de Saída', 'Você tem certeza que deseja sair?', [
+      {
+        text: 'Continuar Separando', style: 'cancel', onPress: () => {}
+      },
+      {
+        text: 'Sair', style: 'destructive', onPress: () => {router.back()}
+      }
+    ])
+    return true;
+  }
+
+  useEffect(() => {
     
     const ns_registered = serials.map((item) => item.serial_number);
     const bipped = Object.values(ns).map(item => item.split(',')).flat().length + ns_registered.length
@@ -43,15 +74,15 @@ export default function Bip() {
 
   }, [ns])
 
-    const getDate = async (now: Date) => {
-      const mysqlDateTime = now.getFullYear() + '-' +
-          String(now.getMonth() + 1).padStart(2, '0') + '-' +
-          String(now.getDate()).padStart(2, '0') + ' ' +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0') + ':' +
-          String(now.getSeconds()).padStart(2, '0');
-      return mysqlDateTime;        
-    }
+  const getDate = async (now: Date) => {
+    const mysqlDateTime = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0') + ':' +
+        String(now.getSeconds()).padStart(2, '0');
+    return mysqlDateTime;        
+  }
 
   const loadData = async () => {
     setLoadingData(true);
@@ -82,9 +113,9 @@ export default function Bip() {
 
       const allSerials = saleOrder.items.flatMap((item: any) => item.serials || []);
       setSerials(allSerials);
-      if(saleOrder.status === 0){
+      if(saleOrder.separating_at === null){
         const now = await getDate(new Date())
-        updateSalesOrders(order, {"status": 7, "separating_at": now})
+        await updateSalesOrders(order, {"separating_at": now})
       }
 
     } catch (err) {
@@ -121,7 +152,7 @@ export default function Bip() {
 
   const handleSerialInput = async (text: string) => {
     setIsProcessing(true);
-    
+
     try {
       if (text.length === 12) {
         const arr = text.split('');
@@ -316,7 +347,6 @@ export default function Bip() {
         "barcodes": Object.values(ns).map(item => item.split(',')).flat()  
       }
 
-      console.log(data)
       const response = await axios.post(`${api_url}/shipment/ns-register`, data)
       const res = response.data;
 
@@ -380,6 +410,17 @@ export default function Bip() {
       {/* PRODUTO */}
       <View style={styles.cell}>
         <Text style={styles.bold}>{item.product_code}</Text>
+          {(item.description && item.description.length >= 22) ? (
+            <>
+                <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
+                  <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+                </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+            </>
+          )}
         <Text>
           {item.quantity > 0 ? ((Number(item.separated) / Number(item.quantity)) * 100).toFixed(0) : 0}%
         </Text>

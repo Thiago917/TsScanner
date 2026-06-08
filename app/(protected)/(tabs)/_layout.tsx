@@ -98,6 +98,7 @@ function InnerTabs() {
           href: (userRole === '12' || userRole === '-1') ? '/shipment' : null,
           title: 'Separação',
           headerTitleAlign: 'center',
+          headerTitle: 'EXPEDIÇÃO',
           headerRight: () => <WifiBadge />,
           tabBarBadge: salesOrders.length > 0 ? salesOrders.length : undefined,
           tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
@@ -111,6 +112,7 @@ function InnerTabs() {
           href: (userRole === '6' || userRole === '-1') ? '/warehouse' : null,
           title: 'Separação',
           headerTitleAlign: 'center',
+          headerTitle: 'ALMOXARIFADO',
           headerRight: () => <WifiBadge />,
           tabBarBadge: orders.length > 0 ? orders.length : undefined,
           tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
@@ -125,6 +127,7 @@ function InnerTabs() {
           title: 'Conferência',
           headerRight: () => <WifiBadge />,
           headerTitleAlign: 'center',
+          headerTitle: 'ALMOXARIFADO',
           tabBarBadge: checking.length > 0 ? checking.length : undefined,
           tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
           tabBarIcon: ({color}) => <Ionicons name='checkmark-circle-outline' size={18} color={color}/>
@@ -138,6 +141,7 @@ function InnerTabs() {
           title: 'Conferência',
           headerRight: () => <WifiBadge />,
           headerTitleAlign: 'center',
+          headerTitle: 'EXPEDIÇÃO',
           tabBarBadge: saleChecking.length > 0 ? saleChecking.length : undefined,
           tabBarBadgeStyle: { backgroundColor: '#ffa704', color: 'white', fontSize: 10 },
           tabBarIcon: ({color}) => <Ionicons name='file-tray-full-outline' size={18} color={color}/>

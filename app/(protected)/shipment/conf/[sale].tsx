@@ -1,6 +1,7 @@
 import { useSalesOrders } from '@/contexts/salesOrdersContext';
 import { Ionicons } from '@expo/vector-icons';
 import { HeaderBackButton } from '@react-navigation/elements';
+import axios from 'axios';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -46,7 +47,7 @@ export default function ShipmentConferenceDetail() {
   const handleBackAttempt = (): boolean => {
     Alert.alert('Aviso de Saída', 'Você tem certeza que deseja sair?', [
       {
-        text: 'Continuar separando', style: 'cancel', onPress: () => {}
+        text: 'Continuar Conferindo', style: 'cancel', onPress: () => {}
       },
       {
         text: 'Sair', style: 'destructive', onPress: () => {router.back()}
@@ -71,7 +72,7 @@ export default function ShipmentConferenceDetail() {
       const filter = saleChecking.find((so) => String(so.order_code) === String(sale) || String(so.id) === String(sale));
       
       if (filter) {
-        const itemsWithCheck = filter.items.map((i: any) => ({ ...i, checked: false }));
+        const itemsWithCheck = filter.items.map((i: any) => ({ ...i, is_checked: false }));
         setItems(itemsWithCheck);
         setCurrent(filter);
 
@@ -94,33 +95,65 @@ export default function ShipmentConferenceDetail() {
 
   const toggleCheck = (index: number) => {
     const updated = [...items];
-    updated[index].checked = !updated[index].checked;
+    updated[index].checked = updated[index].separated;
+    updated[index].is_checked = !updated[index].is_checked;
     setItems(updated);
   };
 
   const handleSendData = async () => {
-    const allChecked = items.every(item => item.checked);
+    const allChecked = items.every(item => item.is_checked);
     if (!allChecked) {
       Alert.alert('Pendência', 'Existem itens que ainda não foram marcados como OK.');
       return;
     }
+    setLoading(true);
     try{
+    
+      const data = {
+        order: String(sale),
+        items: items.map((item) =>( {
+          code: item.product_code,
+          picked: item.checked 
+        }))
+      }
+      const response = await axios.post(`${api_url}/shipment/conference`, data)
+      const res = response.data
+
+      if(res.error){
+        Alert.alert('Erro', res.message);
+        return; 
+      }
+      else{
         const now = await getDate(new Date())
-        updateSalesOrders(sale, {"checked_at": now, "status": 2})
+        await updateSalesOrders(sale, {"checked_at": now, "status": 2})
         Alert.alert('Sucesso', 'Parabéns, conferência realizada com sucesso! ✅')
         router.replace('/ship-checking')
+      }
     }
     catch(err){
         Alert.alert('Erro', `${err}`)
-        return;
+    }
+    finally{
+      setLoading(false);
     }
   }
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (
-    <View style={[styles.card, item.checked && styles.cardChecked]}>
+    <View style={[styles.card, item.is_checked && styles.cardChecked]}>
       <View style={styles.cell}>
         <Text style={styles.subText}>Item</Text>
         <Text style={styles.bold}>{item.product_code}</Text>
+          {(item.description && item.description.length >= 22) ? (
+            <>
+                <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
+                  <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+                </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+            </>
+          )}
       </View>
 
       <View style={[styles.cell, { alignItems: 'center' }]}>
@@ -134,12 +167,12 @@ export default function ShipmentConferenceDetail() {
 
       <TouchableOpacity style={styles.checkArea} onPress={() => toggleCheck(index)} activeOpacity={0.7}>
         <Ionicons 
-          name={item.checked ? "checkmark-circle" : "radio-button-off"} 
+          name={item.is_checked ? "checkmark-circle" : "radio-button-off"} 
           size={30} 
-          color={item.checked ? "#0abb87" : "#3b3b57"} 
+          color={item.is_checked ? "#0abb87" : "#3b3b57"} 
         />
-        <Text style={[styles.checkLabel, { color: item.checked ? "#0abb87" : "#3b3b57" }]}>
-          {item.checked ? "OK" : "Conferir"}
+        <Text style={[styles.checkLabel, { color: item.is_checked ? "#0abb87" : "#3b3b57" }]}>
+          {item.is_checked ? "OK" : "Conferir"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -154,7 +187,7 @@ export default function ShipmentConferenceDetail() {
     );
   }
 
-  const allChecked = items.length > 0 && items.every(item => item.checked);
+  const allChecked = items.length > 0 && items.every(item => item.is_checked);
 
   return (
     <View style={styles.container}>

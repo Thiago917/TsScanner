@@ -55,7 +55,7 @@ export const SalesOrdersProvider = ({ children }: { children: React.ReactNode })
             const res = response.data;
             const ordersArr: salesOrdersType[] = [];
             const saleCheckingArr: salesOrdersType[] = [];
-            
+
             res.forEach((item: any) => {
                 const isUserOrAdmin = Number(user?.departments_id) === -1;
                 if ((Number(item.signed_to) === Number(user?.id) || isUserOrAdmin) && (item.status === 7 || item.status === 0)) {

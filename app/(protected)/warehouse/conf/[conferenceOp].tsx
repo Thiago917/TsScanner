@@ -2,25 +2,27 @@ import { useOrders } from '@/contexts/ProductionOrdersContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import { HeaderBackButton } from '@react-navigation/elements';
 import axios from 'axios';
 import * as Crypto from 'expo-crypto';
 import * as NavigationBar from 'expo-navigation-bar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, BackHandler, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const api_url = process.env.EXPO_PUBLIC_API_URL;
 const main_color = process.env.EXPO_PUBLIC_MAIN_COLOR;
 
 export default function ConferenceDetail() {
-  const { conferenceOp } = useLocalSearchParams<{ conferenceOp: string }>();
   const router = useRouter();
-  
+  const navigation = useNavigation();
+
   const [items, setItems] = useState<any[]>([]);
   const [current, setCurrent] = useState<any>({});
   const [loading, setLoading] = useState<boolean>(false);
   const {checking, setOrders} = useOrders()
+  const { conferenceOp } = useLocalSearchParams<{ conferenceOp: string }>();
 
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
@@ -28,6 +30,23 @@ export default function ConferenceDetail() {
     loadOpDetails();
   }, []);
 
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: (props: any) => (
+        <HeaderBackButton {...props} onPress={handleBackAttempt} />
+      ),
+    });
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackAttempt
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [navigation]);
+  
   const getDate = async (now: Date) => {
     const mysqlDateTime = now.getFullYear() + '-' +
         String(now.getMonth() + 1).padStart(2, '0') + '-' +
@@ -36,6 +55,18 @@ export default function ConferenceDetail() {
         String(now.getMinutes()).padStart(2, '0') + ':' +
         String(now.getSeconds()).padStart(2, '0');
     return mysqlDateTime;        
+  }
+
+  const handleBackAttempt = (): boolean => {
+    Alert.alert('Aviso de Saída', 'Você tem certeza que deseja sair?', [
+      {
+        text: 'Continuar conferindo', style: 'cancel', onPress: () => {}
+      },
+      {
+        text: 'Sair', style: 'destructive', onPress: () => {router.back()}
+      }
+    ])
+    return true;
   }
 
   const loadOpDetails = async () => {
@@ -161,6 +192,20 @@ export default function ConferenceDetail() {
       <View style={styles.cell}>
         <Text style={styles.subText}>Item</Text>
         <Text style={styles.bold}>{item.product_code || item.cod}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description || item.family_desc}</Text>
+          {(item.description && item.description.length >= 22) ? (
+            <>
+                <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
+                  <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+                </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+            </>
+          )}
+        </View>
       </View>
 
       <View style={[styles.cell, { alignItems: 'center' }]}>
