@@ -10,7 +10,7 @@ type salesOrdersItems = {
     separated: number;
     checked: number;
     status: number;
-    serials: any[]
+    serials: any[];
     product_id: number;
 }
 
@@ -24,7 +24,7 @@ type salesOrdersType = {
     transp: string;
     separating_at: string;
     separated_at: string;
-    checking_at: string
+    checking_at: string;
     checked_at: string;
     signed_to: number;
     check_to: number;
@@ -34,7 +34,7 @@ type salesOrdersContextData = {
     saleChecking: salesOrdersType[];
     salesOrders: salesOrdersType[];
     loadSalesOrders: () => Promise<void>;
-    updateSalesOrders: (order: string, updates: Partial<salesOrdersType>) => void
+    updateSalesOrders: (order: string, updates: Partial<salesOrdersType>, onlyLocal?: boolean) => Promise<void>;
 }
 
 export const SalesOrdersContext = createContext<salesOrdersContextData>({} as salesOrdersContextData);
@@ -60,6 +60,7 @@ export const SalesOrdersProvider = ({ children }: { children: React.ReactNode })
                 const isUserOrAdmin = Number(user?.departments_id) === -1;
                 if ((Number(item.signed_to) === Number(user?.id) || isUserOrAdmin) && (item.status === 7 || item.status === 0)) {
                     ordersArr.push(item);
+                    console.log(item)
                 } else if ((Number(item.check_to) === Number(user?.id) || isUserOrAdmin) && item.status === 4) {
                     saleCheckingArr.push(item);
                 }
@@ -72,22 +73,32 @@ export const SalesOrdersProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
-    const updateSalesOrders = async (order: string, updates: Partial<salesOrdersType>) => {
-        if(!salesOrders) return;
+    const updateSalesOrders = async (order: string, updates: Partial<salesOrdersType>, onlyLocal = false) => {
         try {
-            const response = await axios.patch(`${api_url}/shipment/update-sale/${order}`, updates);
-            const res = response.data;
+            if (!onlyLocal) {
+                const response = await axios.patch(`${api_url}/shipment/update-sale/${order}`, updates);
+                const res = response.data;
 
-            if(res.error){
-                console.log(res.message);
-                return;
+                if (res.error) {
+                    console.log(res.message);
+                    return;
+                }
             }
 
-            console.log(res.message)
+            setSalesOrders(prev => prev.map((item) => 
+                String(item.order_code) === String(order) || String(item.id) === String(order)
+                    ? { ...item, ...updates } 
+                    : item
+            ));
 
-            setSalesOrders(prev => prev.map((item) => String(item.order_code) == String(order) ? { ...item, ...updates } : item));
-        } catch(err) {
-            console.log(err);
+            setsaleChecking(prev => prev.map((item) => 
+                String(item.order_code) === String(order) || String(item.id) === String(order)
+                    ? { ...item, ...updates } 
+                    : item
+            ));
+
+        } catch (err) {
+            console.log("Erro ao atualizar ordem de venda no contexto:", err);
         }
     };
 
@@ -104,19 +115,19 @@ export const SalesOrdersProvider = ({ children }: { children: React.ReactNode })
                 echoInstance
                     .channel(`new-order-to-${user.id}`)
                     .listen('.orders', () => {
-                        console.log('Evento recebido via Echo! Atualizando lista...');
+                        console.log('Evento recebido via Echo! Atualizando lista de vendas...');
                         loadSalesOrders();
                     });
-                console.log('Echo conectado com sucesso.');
+                console.log('Echo conectado com sucesso na expedição.');
             }
         } catch (error) {
-            console.error("Falha ao inicializar o Echo:", error);
+            console.error("Falha ao inicializar o Echo na expedição:", error);
         }
 
         return () => {
             if (echoInstance) {
                 echoInstance.disconnect();
-                console.log('Echo foi desconectado com sucesso do canal antigo');
+                console.log('Echo foi desconectado com sucesso do canal antigo de expedição');
             }
         };
     }, [user?.id]);

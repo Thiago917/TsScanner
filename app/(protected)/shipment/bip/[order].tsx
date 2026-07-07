@@ -1,19 +1,14 @@
-import { useSalesOrders } from '@/contexts/salesOrdersContext';
 import Slider from '@react-native-community/slider';
-import { HeaderBackButton } from '@react-navigation/elements';
 import axios from "axios";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, BackHandler, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const api_url = process.env.EXPO_PUBLIC_API_URL
-
 export default function Bip() {
 
   const router = useRouter();
-  const navigation = useNavigation();
   const inputRef = useRef<TextInput | null>(null);
-  const { salesOrders, updateSalesOrders } = useSalesOrders();
 
   const { order} = useLocalSearchParams<{ order: string; }>();
 
@@ -28,45 +23,16 @@ export default function Bip() {
   const [bipedAmount, setBipedAmount] = useState(false)
   const [split, setSplit] = useState(true);
   const [countAmount, setCountAmount] = useState<number>(0);
-  const [isProcessing, setIsProcessing] = useState(false);
   
   useEffect(() => {
-      loadData();
+    loadData()
   }, []);
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: (props: any) => (
-        <HeaderBackButton {...props} onPress={handleBackAttempt} />
-      ),
-    });
-
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      handleBackAttempt
-    );
-
-    return () => {
-      backHandler.remove();
-    };
-  }, [navigation]);
-
-  const handleBackAttempt = (): boolean => {
-    Alert.alert('Aviso de Saída', 'Você tem certeza que deseja sair?', [
-      {
-        text: 'Continuar Separando', style: 'cancel', onPress: () => {}
-      },
-      {
-        text: 'Sair', style: 'destructive', onPress: () => {router.back()}
-      }
-    ])
-    return true;
-  }
 
   useEffect(() => {
     
     const ns_registered = serials.map((item) => item.serial_number);
     const bipped = Object.values(ns).map(item => item.split(',')).flat().length + ns_registered.length
+    
     if(bipped > 0 && Number(countAmount) === Number(bipped)){
       setSplit(false)
       setBipedAmount(true)
@@ -74,51 +40,25 @@ export default function Bip() {
 
   }, [ns])
 
-  const getDate = async (now: Date) => {
-    const mysqlDateTime = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(now.getDate()).padStart(2, '0') + ' ' +
-        String(now.getHours()).padStart(2, '0') + ':' +
-        String(now.getMinutes()).padStart(2, '0') + ':' +
-        String(now.getSeconds()).padStart(2, '0');
-    return mysqlDateTime;        
-  }
-
   const loadData = async () => {
     setLoadingData(true);
     try {
-      const saleOrder = salesOrders.find(
-        (so) => String(so.order_code) === String(order) || String(so.id) === String(order)
-      );
-
-      if (!saleOrder || !saleOrder.items) {
-        Alert.alert(
-          'Erro',
-          `Pedido ${order} não encontrado ou não atribuído a você.`,
-          [{ text: 'Ok', onPress: () => router.replace('/shipment') }]
-        );
-        return;
-      }
-
-      setItems(saleOrder.items);
-      setOrderID(String(saleOrder.id));
+      const response = await axios.get(`${api_url}/shipment/separation-details/${order}`);
       
-      setEans(saleOrder.items.map((item: any) => item.code));
+      const itemsFromApi = response.data.response.items;
 
-      const total = saleOrder.items.reduce(
+      setItems(itemsFromApi);
+      setOrderID(response.data.response.id);
+      setSerials(response.data.ns);
+      setEans(itemsFromApi.map((item: any) => item.code));
+
+      const total = itemsFromApi.reduce(
         (sum: number, item: any) => sum + Number(item.quantity),
         0
       );
       setCountAmount(total);
-
-      const allSerials = saleOrder.items.flatMap((item: any) => item.serials || []);
-      setSerials(allSerials);
-      if(saleOrder.separating_at === null){
-        const now = await getDate(new Date())
-        await updateSalesOrders(order, {"separating_at": now})
-      }
-
     } catch (err) {
+      console.log(err)
       Alert.alert(
         'Erro',
         `Aconteceu um problema ao carregar itens do pedido ${order}...`,
@@ -150,187 +90,169 @@ export default function Bip() {
     });
   };
 
+
   const handleSerialInput = async (text: string) => {
-    setIsProcessing(true);
+    
+    if (text.length === 12) {
+      const arr = text.split('');
+      arr.splice(5, 0, '0');
+      text = arr.join('');
+    }
 
-    try {
-      if (text.length === 12) {
-        const arr = text.split('');
-        arr.splice(5, 0, '0');
-        text = arr.join('');
-      }
+    if (text.length !== 13 && text.length !== 12) return;
 
-      if (text.length !== 13 && text.length !== 12) {
-        setIsProcessing(false);
-        return;
-      }
-
-      const ns_rec  = serials.map((item) => item.serial_number) 
+    const ns_rec  = serials.map((item) => item.serial_number) 
+    
+    const codes = items.map((item) => (
+    {
       
-      const codes = items.map((item) => (
-      {
-        
-        product_code:
-          item.product_code.length === 3
-            ? `0${item.product_code}`
-            : `${item.product_code}`,
-        product_id: item.product_id,
-        quantity: Number(item.quantity),
-        separated: Number(item.separated),
-        collective_box: item.in_box === null || !item.in_box ? 1 : Number(item.in_box.collective_box),
-        ean: item.code.ean_dv
-      }));
+      product_code:
+        item.product_code.length === 3
+          ? `0${item.product_code}`
+          : `${item.product_code}`,
+      product_id: item.product_id,
+      quantity: Number(item.quantity),
+      separated: Number(item.separated),
+      collective_box: item.in_box === null || !item.in_box ? 1 : Number(item.in_box.collective_box),
+      ean: item.code.ean_dv
+    }));
 
-      let checkProd = '';
+    let checkProd = '';
 
-      if (text.startsWith('789')) {
-        const found = codes.find(item => String(item.ean) === text);
-        checkProd = found ? found.product_code : '';
-      } else {
-        checkProd = text.slice(5, 9);
+    if (text.startsWith('789')) {
+      const found = codes.find(item => String(item.ean) === text);
+      checkProd = found ? found.product_code : '';
+    } else {
+      checkProd = text.slice(5, 9);
+    }
+
+    var product = codes.find((item) => item.product_code === checkProd || text === item.ean);
+    const find_duplicate = ns_rec.find((item) => item === text)
+    const find_eans = eans.find((item) => String(item.ean_dv)  === String(text))
+
+    if (!product && checkProd.endsWith('0')) {
+      
+      var checkVal = `0${checkProd.slice(0, 3)}`
+      product = codes.find((item) => item.product_code === checkVal || text === item.ean);
+      if(product){
+        checkProd = checkVal
       }
+    }
 
-      var product = codes.find((item) => item.product_code === checkProd || text === item.ean);
-      const find_duplicate = ns_rec.find((item) => item === text)
-      const find_eans = eans.find((item) => String(item.ean_dv)  === String(text))
+    if(!product){
+      Alert.alert('Erro', `Você bipou o produto errado: ${checkProd}! Produto ${checkProd} Não existe no pedido`, [{
+        text: 'Ok',
+        onPress: () => inputRef.current?.focus()
+      }])
+      return;
+    }
+    
+    const { product_id, quantity, separated, collective_box } = product;
 
-      if (!product && checkProd.endsWith('0')) {
-        
-        var checkVal = `0${checkProd.slice(0, 3)}`
-        product = codes.find((item) => item.product_code === checkVal || text === item.ean);
-        if(product){
-          checkProd = checkVal
-        }
+    if(text.slice(0, 3) === '789'){
+      const ok = await confirmEAN(
+      `Você bipou o EAN do item ${checkProd}, está correto?`
+      );
+
+      if(!ok){
+      setInputValue('');
+      inputRef.current?.focus()
+      return;
       }
+    }
 
-      if(!product){
-        Alert.alert('Erro', `Você bipou o produto errado: ${checkProd}! Produto ${checkProd} Não existe no pedido`, [{
+    setInputValue('');
+
+    setNs((prev) => {
+      const atual = prev[product_id] || '';
+      const nsArray = atual.split(',').filter(Boolean);
+      const actualList = [...nsArray];
+
+      // 1. VALIDAÇÃO ANTES DE GERAR: Se for bip individual e já existir na lista atual
+      if (!text.includes('C') && nsArray.includes(text) && text.slice(0, 3) !== '789') {
+        Alert.alert('Aviso', `O número de série já foi bipado: ${text}`, [{
           text: 'Ok',
           onPress: () => inputRef.current?.focus()
-        }])
-        setIsProcessing(false);
-        return;
-      }
-      
-      const { product_id, quantity, separated, collective_box } = product;
-
-      if(text.slice(0, 3) === '789'){
-        const ok = await confirmEAN(
-        `Você bipou o EAN do item ${checkProd}, está correto?`
-        );
-
-        if(!ok){
-        setInputValue('');
-        inputRef.current?.focus()
-        setIsProcessing(false);
-        return;
-        }
+        }]);
+        return prev;
       }
 
-      setInputValue('');
+      // 2. PROCESSAMENTO E VALIDAÇÃO DE DUPLICIDADE
+      if (text.includes('C')) {
+        // Mudado para -3 para ler corretamente "C001"
+        const final = Number(text.slice(-3)) * Number(collective_box);
+        const inicio = final - (Number(collective_box) - 1); 
+        const base = text.split('C')[0];
 
-      setNs((prev) => {
-        const atual = prev[product_id] || '';
-        const nsArray = atual.split(',').filter(Boolean);
-        const actualList = [...nsArray];
-
-        if (!text.includes('C') && nsArray.includes(text) && text.slice(0, 3) !== '789') {
-          Alert.alert('Aviso', `O número de série já foi bipado: ${text}`, [{
-            text: 'Ok',
-            onPress: () => inputRef.current?.focus()
-          }]);
-          setIsProcessing(false);
-          return prev;
-        }
-
-        if (text.includes('C')) {
-          const boxIndex = Number(text.slice(-3));
-          const boxSize = Number(collective_box);
-
-          const begin = (boxIndex - 1) * boxSize + 1; 
-          const theoric = boxIndex * boxSize;
+        // Criamos uma lista temporária para verificar se essa caixa inteira já não foi bipada
+        for (var i = inicio; i <= final; i++) {
+          const sn = `${base}${String(i).padStart(4, '0')}`;
           
-          const end = Math.min(theoric, quantity); 
-          const base = text.split('C')[0];
+          // Se QUALQUER um dos números da caixa já foi bipado antes (na sessão atual ou no banco)
+          const jaBipadoDispositivo = actualList.includes(sn);
+          const jaBipadoBanco = ns_rec.includes(sn);
 
-          for (let i = begin; i <= end; i++) {
-            const sn = `${base}${String(i).padStart(4, '0')}`;
-
-            const find1 = actualList.includes(sn);
-            const find2 = ns_rec.includes(sn);
-
-            if (find1 || find2) {
-              Alert.alert('Aviso', `A caixa contém o número de série ${sn} que já foi bipado anteriormente!`, [
-                { text: 'Ok', onPress: () => inputRef.current?.focus() },
-              ]);
-              setIsProcessing(false);
-              return prev;
-            }
-
-            actualList.push(sn);
-          }
-        } 
-        else {
-
-          if (find_duplicate && text.slice(0, 3) != '789') {
-            Alert.alert('Aviso', `O número de série ${text} já foi bipado...`, [{
+          if (jaBipadoDispositivo || jaBipadoBanco) {
+            Alert.alert('Aviso', `A caixa contém o número de série ${sn} que já foi bipado anteriormente!`, [{
               text: 'Ok',
               onPress: () => inputRef.current?.focus()
             }]);
-            setIsProcessing(false);
-            return prev;
+            return prev; // Cancela o bip da caixa inteira se achar duplicado
           }
-          actualList.push(text);
+
+          actualList.push(sn);
         }
-        
-        if (text.slice(0, 3) === '789' && !find_eans) {
-          Alert.alert('Aviso', `EAN do item ${checkProd} não foi encontrado.`, [{
+      } else {
+        // Validação de banco para bip individual
+        if (find_duplicate && text.slice(0, 3) != '789') {
+          Alert.alert('Aviso', `O número de série ${text} já foi bipado...`, [{
             text: 'Ok',
             onPress: () => inputRef.current?.focus()
           }]);
-          setIsProcessing(false);
           return prev;
         }
+        actualList.push(text);
+      }
+      
+      // 3. VALIDAÇÕES RESTANTES (Quantidade e EAN)
+      if (text.slice(0, 3) === '789' && !find_eans) {
+        Alert.alert('Aviso', `EAN do item ${checkProd} não foi encontrado.`, [{
+          text: 'Ok',
+          onPress: () => inputRef.current?.focus()
+        }]);
+        return prev;
+      }
 
-        if (separated >= quantity) {
-          Alert.alert('Aviso', `Bipando o item ${checkProd} a mais do que o necessário!`, [{
-            text: 'Ok',
-            onPress: () => inputRef.current?.focus()
-          }]);
-          setIsProcessing(false);
-          return prev;
-        }
+      if (separated >= quantity) {
+        Alert.alert('Aviso', `Bipando o item ${checkProd} a mais do que o necessário!`, [{
+          text: 'Ok',
+          onPress: () => inputRef.current?.focus()
+        }]);
+        return prev;
+      }
 
-        const novo = actualList.join(',');
+      // 4. SALVAMENTO DOS ESTADOS (Só chega aqui se passou em todos os testes)
+      const novo = actualList.join(',');
 
-        setItems((prev) =>
-          prev.map((p) =>{
-            if(p.product_id !== product_id) return p;
+      setItems((prev) =>
+        prev.map((p) =>
+          p.product_id === product_id
+            ? { ...p, separated: text.includes('C') ? (Number(p.separated) + Number(collective_box)).toString() : (Number(p.separated) + 1).toString() }
+            : p
+        )
+      );
 
-            const step = text.includes('C') ? (Number(collective_box) || 1) : 1
+      return { ...prev, [product_id]: novo };
+    });
 
-            return{
-              ...p,
-              separated: Math.min(Number(p.separated) + step, quantity)
-            }
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
 
-          })
-        );
-
-        return { ...prev, [product_id]: novo };
-      });
-
-      setTimeout(() => {
-        inputRef.current?.focus();
-        setIsProcessing(false);
-      }, 50);
-    } catch (error) {
-      setIsProcessing(false);
-      throw error;
-    }
   };
 
-  const sendData = async () => {
+  console.log(ns)
+  const sendData = () => {
     setLoading(true)
     if(Object.values(ns).map(item => item.split(',')).flat().length == 0){
       setLoading(false)
@@ -340,28 +262,20 @@ export default function Bip() {
       }])
       return;
     }
+
     try{
-
-      const data = {
-        "order": orderID,
-        "barcodes": Object.values(ns).map(item => item.split(',')).flat()  
-      }
-
-      const response = await axios.post(`${api_url}/shipment/ns-register`, data)
-      const res = response.data;
-
-        if(res.error){
-          return Alert.alert('Erro', `${res.message}`)
-        }
-
+      axios.post(`${api_url}/shipment/ns-register`, {
+        'order': orderID,
+        'barcodes': Object.values(ns).map(item => item.split(',')).flat() 
+      }).then((response) => {
+        const res = response.data;
         if(res.response_id == '2'){
-          
+          setLoading(false)
           Alert.alert('Sucesso!','Pedido separado com sucesso! ✅', [{
             text: 'Ok',
             onPress: () => inputRef.current?.focus()
           }]);
           
-          setLoading(false)
           setTimeout(() => {
             router.replace('/shipment')
           }, 1500)
@@ -374,6 +288,7 @@ export default function Bip() {
         }]);
         router.replace(`/shipment/bip/${order}`)
       }
+    })
     }
     catch(err){
       setLoading(false)
@@ -406,33 +321,21 @@ export default function Bip() {
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.row}>
-
       {/* PRODUTO */}
       <View style={styles.cell}>
         <Text style={styles.bold}>{item.product_code}</Text>
-          {(item.description && item.description.length >= 22) ? (
-            <>
-                <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
-                  <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
-                </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
-            </>
-          )}
         <Text>
           {item.quantity > 0 ? ((Number(item.separated) / Number(item.quantity)) * 100).toFixed(0) : 0}%
         </Text>
       </View>
 
-      {/* LOCAL NO ESTOQUE */}
+      {/* QUANTIDADE */}
       <View style={styles.cell}>
-        <Text style={{ fontSize: 12, color: '#3b3b57' }}>Local: {item.place}</Text>
         <Text>Total: {Number(item.quantity).toFixed(0)}</Text>
+        <Text>Separado: {Number(item.separated).toFixed(0)}</Text>
       </View>
 
-      {/* SLIDER INDICATIVO */}
+      {/* SEPARAR */}
       <View style={styles.cell}>
         <Slider 
           minimumValue={0}
@@ -448,7 +351,6 @@ export default function Bip() {
           }
           maximumTrackTintColor='black'
         />
-        <Text style={{ textAlign: 'center', marginTop: 4, fontSize: 11 }}>Separado: {Number(item.separated).toFixed(0)}</Text>
       </View>
     </View>
   );

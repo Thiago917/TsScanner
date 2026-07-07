@@ -24,8 +24,13 @@ export default function ShipmentConferenceDetail() {
   useEffect(() => {
     NavigationBar.setVisibilityAsync('hidden');
     NavigationBar.setBehaviorAsync('overlay-swipe');
-    loadOrderDetails();
   }, []);
+
+  useEffect(() => {
+    if (saleChecking && saleChecking.length > 0) {
+      loadOrderDetails();
+    }
+  }, [saleChecking]); 
 
   useEffect(() => {
     navigation.setOptions({
@@ -67,14 +72,20 @@ export default function ShipmentConferenceDetail() {
   }
 
   const loadOrderDetails = async () => {
-    setLoading(true);
+    if (items.length === 0) setLoading(true);
+    
     try {
       const filter = saleChecking.find((so) => String(so.order_code) === String(sale) || String(so.id) === String(sale));
       
       if (filter) {
-        const itemsWithCheck = filter.items.map((i: any) => ({ ...i, is_checked: false }));
-        setItems(itemsWithCheck);
         setCurrent(filter);
+
+        if (items.length === 0) {
+          const itemsWithCheck = filter.items.map((i: any) => ({ ...i, is_checked: false }));
+          setItems(itemsWithCheck);
+        } else {
+          console.log("Contexto atualizou em background, mantendo os checks locais intactos.");
+        }
 
         if(filter.checking_at === null){
             const now = await getDate(new Date())

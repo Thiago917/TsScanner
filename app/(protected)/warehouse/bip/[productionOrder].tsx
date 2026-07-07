@@ -91,12 +91,18 @@ export default function WarehouseBip() {
       }
 
       setCurrent(opDetails);
-      const formattedItems = opDetails.items.map((item: any) => ({
-        ...item,
-        picked: Number(item.separated) || 0, 
-      }));
 
-      setItems(formattedItems);
+      if (items.length === 0) {
+        const formattedItems = opDetails.items.map((item: any) => ({
+          ...item,
+          picked: Number(item.separated) || 0, 
+        }));
+
+        setItems(formattedItems);
+
+        const allItemsPicked = formattedItems.every((item: any) => Number(item.picked) >= Number(item.quantity));
+        setSubmitting(!allItemsPicked); 
+      }
 
       var orderId = !opDetails.isReq ? opDetails.order_code : `REQ-${opDetails.id}`; 
       const now = await getDate(new Date());
@@ -104,9 +110,6 @@ export default function WarehouseBip() {
       if(opDetails.status === 1){
         setOrders(orderId, { "status": 2, "separating_at": now });
       }
-
-      const allItemsPicked = formattedItems.every((item: any) => Number(item.picked) >= Number(item.quantity));
-      setSubmitting(!allItemsPicked); 
 
     } catch (err) {
         Alert.alert('Erro', `Erro ao carregar itens da O.P ${productionOrder}`);
@@ -160,16 +163,16 @@ export default function WarehouseBip() {
     setChecking(true);
 
     try {
+      const order_id = !current.isReq ? productionOrder : `REQ-${current.id}`
       const data = {
-        op: !current.isReq ? productionOrder : `REQ-${current.id}`,
+        op: order_id,
         items: items.map((item: any) => ({
           product_code: item.product_code, 
           picked: item.picked
         }))
       }
-
+      
       const picked = items.reduce((sum, item) => sum + (Number(item.picked) || 0 ), 0)
-      console.log(picked)
       if(picked === 0){
         return Alert.alert('Atenção', 'Você não bipou nenhum produto')
       }
@@ -181,11 +184,21 @@ export default function WarehouseBip() {
         return;
       }
 
+      const updatedItems = items.map((item: any) => ({
+        ...item,
+        separated: Number(item.picked), // O que foi bipado se torna a nova base de separados
+      }));
+
       Alert.alert('Sucesso', `${res.message}`)
       router.replace('/warehouse')
 
-      const now = await getDate(new Date());
-      setOrders(!current.isReq ? productionOrder : `REQ-${current.id}`, {"separated_at": now });
+      if(pickedAll){
+        const now = await getDate(new Date());
+        await setOrders(order_id, {"separated_at": now }, false);
+      }
+      else{
+        await setOrders(order_id, {items: updatedItems}, true)
+      }
 
     } catch (err) {
       Alert.alert('Erro', `Erro no envio da separação para a conferência | ${err}`)

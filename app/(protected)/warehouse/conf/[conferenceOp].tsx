@@ -72,15 +72,22 @@ export default function ConferenceDetail() {
   const loadOpDetails = async () => {
     setLoading(true);
     try {
-
-      const now = await getDate(new Date());
       const filter = checking.find((op) => !op.isReq ? String(op.order_code) === String(conferenceOp) : String(op.id) === String(conferenceOp));
+      
       if (filter) {
-        const orderId = !filter.isReq ? filter.order_code : `REQ-${filter.id}`;
-        await setOrders(orderId, { "status": 7 , 'checking_at': now });
-        const itemsWithCheck = filter.items.map((i: any) => ({ ...i, checked: false }));
-        setItems(itemsWithCheck);
         setCurrent(filter);
+        if(filter.checking_at === null){
+          const now = await getDate(new Date());
+          const orderId = !filter.isReq ? filter.order_code : `REQ-${filter.id}`;
+          await setOrders(orderId, { "status": 7 , 'checking_at': now });
+        }        
+
+        if (items.length === 0) {
+          const itemsWithCheck = filter.items.map((i: any) => ({ ...i, checked: false }));
+          setItems(itemsWithCheck);
+          console.log("Itens de conferência carregados pela primeira vez.");
+        }
+
       } else {
         setItems([]);
       }
@@ -110,7 +117,8 @@ export default function ConferenceDetail() {
       op: !current.isReq ? current.order_code : `REQ-${current.id}`,
       prods: items.map((item) => ({
         code: item.product_code,
-        picked: item.separated
+        picked: item.separated,
+        measure: item.measure
       })),
       uid: Crypto.randomUUID(),
       status: 'pending'
@@ -212,7 +220,7 @@ export default function ConferenceDetail() {
         <Text style={styles.qtyText}>
           Qtd. Pedida: {Number(item.quantity).toFixed(0)}
         </Text>
-        <Text style={[styles.pickedText, [Number(item.separated) < Number(item.quantity) ? { color: '#e62222' } : { color: '#0abb87' }]]}>
+        <Text style={[styles.pickedText, [Number(item.separated) !== Number(item.quantity) ? { color: '#e62222' } : { color: '#0abb87' }]]}>
           Separado: {Number(item.separated).toFixed(0)}
         </Text>
       </View>
@@ -246,8 +254,8 @@ export default function ConferenceDetail() {
       <StatusBar hidden />
       
       <View style={styles.headerTitle}>
-        <Text style={styles.h1}>
-          {!current.isReq ? 'Conferência OP:': 'Conferência da:'} <Text style={{ color: '#0abb87' }}>#{!current.isReq ? conferenceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
+        <Text style={styles.h1} onPress={() => Alert.alert('Detalhes do Item', `${current.manufacture_cod} - ${current.manufacture_desc}`)}>
+          {!current.isReq ? 'OP:': ''} <Text style={{ color: '#0abb87' }}>#{!current.isReq ? conferenceOp : `REQ-${current.id.toString().padStart(5, '0')}`}</Text>
         </Text>
       </View>
 

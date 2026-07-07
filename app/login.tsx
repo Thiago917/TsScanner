@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity, // Adicionado para poder fechar o teclado ao tocar fora
+  TouchableOpacity,
   View
 } from 'react-native';
 
@@ -22,7 +22,7 @@ export default function Login() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const emailRef = useRef<TextInput>(null); 
+  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null); 
   const [loading, setLoading] = useState<boolean>(false)
 
@@ -37,7 +37,7 @@ export default function Login() {
     if(error) Alert.alert('Erro', `${message}`)
     
     try{
-      // Alert.alert(`Ta chamando a rota ${api_url}/login com os parametros: email: ${data}, password: ${password}`)
+      console.log(`Ta chamando a rota ${api_url}/login com os parametros: email: ${data}, password: ${password}`)
       const response = await axios.post(`${api_url}/login`, {
         email: data,
         password: password
@@ -80,12 +80,11 @@ export default function Login() {
 
     if(email === '') return {message: 'Email inválido', error: true}
 
-    const mail = email.includes('@') ? email : `${email}@tsshara.com.br`;
+    const mail = email.includes('@') ? email : `${email.trim()}@tsshara.com.br`;
 
     return {message: 'Email válido', error: false, data: mail}
   }
 
-  // Foca no input de email quando a tela é focada
   useFocusEffect(
     React.useCallback(() => {
       emailRef.current?.focus();
