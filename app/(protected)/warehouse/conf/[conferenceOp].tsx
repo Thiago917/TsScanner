@@ -129,12 +129,29 @@ export default function ConferenceDetail() {
       const parsed = saved ? JSON.parse(saved) : [];
       parsed.push(newConf);
       await AsyncStorage.setItem('checking_queue', JSON.stringify(parsed));
+      console.log('[Offline First] Conferência adicionada à checking_queue:', {
+        uid: newConf.uid,
+        op: newConf.op,
+        totalNaFila: parsed.length,
+        itens: newConf.prods.length,
+      });
 
       const conn = await NetInfo.fetch();
-      
-      if(conn.isConnected){
-        finalizeChecking(newConf);
+      const canSendNow = conn.isConnected === true && (conn.isInternetReachable === null || conn.isInternetReachable === true);
+      console.log('[Offline First] Estado da rede antes do envio:', {
+        type: conn.type,
+        isConnected: conn.isConnected,
+        isInternetReachable: conn.isInternetReachable,
+        canSendNow,
+        uid: newConf.uid,
+        op: newConf.op,
+      });
+
+      if(canSendNow){
+        console.log('[Offline First] Tentando enviar imediatamente:', { uid: newConf.uid, op: newConf.op });
+        await finalizeChecking(newConf);
       }
+      
       else{
         setTimeout(() => {
           setLoading(true)
@@ -161,6 +178,9 @@ export default function ConferenceDetail() {
 
       const response = await axios.post(`${api_url}/warehouse/move-to-slot`, data);
       const res = response.data
+      console.log('[Offline First] Resposta do envio:', {
+        response: res,
+      });
 
       if(res.error){
         Alert.alert("Erro", res.message);
@@ -172,6 +192,12 @@ export default function ConferenceDetail() {
         const parsed = JSON.parse(saved);
         const filtered = parsed.filter((item: any) => item.uid !== data.uid);
         await AsyncStorage.setItem('checking_queue', JSON.stringify(filtered));
+        console.log('[Offline First] Item removido da checking_queue após sucesso:', {
+          uid: data.uid,
+          op: data.op,
+          antes: parsed.length,
+          depois: filtered.length,
+        });
       }
 
       const now = await getDate(new Date())
@@ -183,7 +209,12 @@ export default function ConferenceDetail() {
     } 
 
     catch (err) {
-      console.log(err);
+      console.log('[Offline First] Erro ao finalizar conferência; item deve permanecer na fila:', {
+        uid: data.uid,
+        op: data.op,
+        error: err,
+      });
+      Alert.alert('', `${err}`)
       Alert.alert(
         'Instabilidade de Rede', 
         'Não conseguimos sincronizar com o servidor agora, mas fique tranquilo: sua conferência está salva no aparelho e será reenviada assim que a conexão for reestabelecida.',

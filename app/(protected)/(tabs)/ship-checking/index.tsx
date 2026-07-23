@@ -32,15 +32,22 @@ export default function ShipmentCheckingList() {
   const checkLocalPendingQueue = async () => {
     try {
       const saved = await AsyncStorage.getItem('shipment_checking_queue');
+      console.log('[Shipment Checking List] Leitura da shipment_checking_queue:', saved ? `${saved.length} caracteres` : 'chave inexistente');
       if (saved) {
         const parsed = JSON.parse(saved);
         const pendingOrders = parsed.map((item: any) => String(item.order));
+        console.log('[Shipment Checking List] Pendências reconhecidas:', {
+          total: Array.isArray(parsed) ? parsed.length : 'fila inválida',
+          orders: pendingOrders,
+          itens: Array.isArray(parsed) ? parsed.map((item: any) => ({ uid: item?.uid, order: item?.order, status: item?.status })) : [],
+        });
         setLocalPendingUids(pendingOrders);
       } else {
+        console.log('[Shipment Checking List] Nenhuma pendência local encontrada.');
         setLocalPendingUids([]);
       }
     } catch (err) {
-      console.log('Erro ao ler fila local no list:', err);
+      console.log('[Shipment Checking List] Erro ao ler/interpretar shipment_checking_queue:', err);
     }
   };
 

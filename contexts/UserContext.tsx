@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { router } from "expo-router";
 import { createContext, useContext, useEffect, useState } from "react";
+import { Alert } from "react-native";
 
 export type UserType = {
     id: number;
@@ -51,8 +52,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
         } catch (err) {
             console.log('Erro ao buscar dados do usuário (catch) | ', err);
+            Alert.alert('', `${err}`)
             setUserState(null);
-            return router.replace('/login');
         } finally {
             setLoading(false);
         }

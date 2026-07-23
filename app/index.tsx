@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Alert, View } from "react-native";
 
 
 export default function indexScreen(){
@@ -14,7 +14,7 @@ export default function indexScreen(){
 
                 const token = await AsyncStorage.getItem('@userToken')
                 const role = await AsyncStorage.getItem('@userRole')
-
+                console.log({token, role})
                     if(!token || !role){
                         router.replace('/login')
                         return;
@@ -34,6 +34,7 @@ export default function indexScreen(){
             }
             catch(err){
                 console.log('Erro ao resgatar dados do async storage | ', err)
+                Alert.alert('Erro', `Erro ao realizar login | ${err}`)
                 return router.replace('/login')
             }
         }

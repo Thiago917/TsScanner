@@ -3,7 +3,8 @@ import { Pusher } from 'pusher-js/react-native';
 
 // Importante manter para o Echo encontrar o cliente globalmente no mobile
 (global as any).Pusher = Pusher;
-Pusher.logToConsole = true;
+// Desativa os logs internos do Pusher/WebSocket no console.
+Pusher.logToConsole = false;
 
 export const createEchoInstance = () => {
     return new Echo({

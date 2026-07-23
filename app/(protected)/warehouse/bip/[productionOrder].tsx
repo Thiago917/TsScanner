@@ -24,7 +24,7 @@ export default function WarehouseBip() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [tempQty, setTempQty] = useState<string>('');
   const [pickedAll, setPickedAll] = useState<boolean>(false);
-  const {setOrders, orders, loadOrders} = useOrders()
+  const { setOrders, orders, loadOrders } = useOrders();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,7 +66,7 @@ export default function WarehouseBip() {
         String(now.getMinutes()).padStart(2, '0') + ':' +
         String(now.getSeconds()).padStart(2, '0');
     return mysqlDateTime;        
-  }
+  };
 
   const handleBackAttempt = (): boolean => {
     Alert.alert('Aviso de Saída', 'Você tem certeza que deseja sair?', [
@@ -74,11 +74,11 @@ export default function WarehouseBip() {
         text: 'Cancelar', style: 'cancel', onPress: () => {}
       },
       {
-        text: 'Sair e perder progresso', style: 'destructive', onPress: () => {router.back()}
+        text: 'Sair e perder progresso', style: 'destructive', onPress: () => { router.back(); }
       }
-    ])
+    ]);
     return true;
-  }
+  };
 
   const loadData = async () => {
     try {
@@ -107,7 +107,7 @@ export default function WarehouseBip() {
       var orderId = !opDetails.isReq ? opDetails.order_code : `REQ-${opDetails.id}`; 
       const now = await getDate(new Date());
 
-      if(opDetails.status === 1){
+      if (opDetails.status === 1) {
         setOrders(orderId, { "status": 2, "separating_at": now });
       }
 
@@ -140,14 +140,13 @@ export default function WarehouseBip() {
       if (Number(itemToUpdate.picked) > Number(itemToUpdate.quantity)) {
         Alert.alert('Aviso', `Quantidade máxima do item ${itemToUpdate.product_code} já atingida.`);
       }
-      const picked = updated.reduce((sum, item) => sum + (Number(item.picked) || 0 ), 0)
-      const total = updated.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+      const picked = updated.reduce((sum, item) => sum + (Number(item.picked) || 0), 0);
+      const total = updated.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
-      if(picked === total){
+      if (picked === total) {
         setPickedAll(true);
       }
 
-      // const allItemsPicked = updated.every(item => Number(item.picked) >= Number(item.quantity));
       setSubmitting(false);
       return updated;
     });
@@ -163,48 +162,87 @@ export default function WarehouseBip() {
     setChecking(true);
 
     try {
-      const order_id = !current.isReq ? productionOrder : `REQ-${current.id}`
+      const totalPicked = items.reduce((sum, item) => sum + (Number(item.picked) || 0), 0);
+
+      if (totalPicked === 0) {
+        Alert.alert('Atenção', 'Você não bipou nenhum produto.');
+        setChecking(false);
+        return;
+      }
+
+      const hasUncheckedItems = items.some((item: any) => {
+        const quantity = Number(item.quantity) || 0;
+        const picked = Number(item.picked) || 0;
+        return quantity > 0 && picked < quantity;
+      });
+
+      let partial = false;
+
+      if (hasUncheckedItems) {
+        const userConfirmed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Atenção',
+            'Notei que existem itens não bipados, quer enviar para conferência mesmo assim?',
+            [
+              {
+                text: 'NÃO',
+                style: 'cancel',
+                onPress: () => resolve(false),
+              },
+              {
+                text: 'SIM',
+                onPress: () => resolve(true),
+              },
+            ],
+            { cancelable: false }
+          );
+        });
+
+        if(!userConfirmed) {
+          partial = true;
+        }
+
+      }
+
+      const order_id = !current.isReq ? productionOrder : `REQ-${current.id}`;
       const data = {
         op: order_id,
         items: items.map((item: any) => ({
           product_code: item.product_code, 
           picked: item.picked
-        }))
-      }
-      
-      const picked = items.reduce((sum, item) => sum + (Number(item.picked) || 0 ), 0)
-      if(picked === 0){
-        return Alert.alert('Atenção', 'Você não bipou nenhum produto')
-      }
+        })),
+        partial: partial
+      };
+
       const response = await axios.post(`${api_url}/warehouse/separation`, data);
       const res = response.data;
 
       if (res.error) {
-        Alert.alert('Erro', `${res.message}`)
+        Alert.alert('Erro', `${res.message}`);
         return;
       }
 
       const updatedItems = items.map((item: any) => ({
         ...item,
-        separated: Number(item.picked), // O que foi bipado se torna a nova base de separados
+        separated: Number(item.picked),
       }));
 
-      Alert.alert('Sucesso', `${res.message}`)
-      router.replace('/warehouse')
+      Alert.alert('Sucesso', `${res.message}`);
 
-      if(pickedAll){
+      if (pickedAll || !partial) {
+        console.log('O envio falta material porém vai ir pra conferencia')
         const now = await getDate(new Date());
-        await setOrders(order_id, {"separated_at": now }, false);
+        await setOrders(order_id, { "separated_at": now }, false);
+      } else {
+        await setOrders(order_id, { items: updatedItems }, true);
       }
-      else{
-        await setOrders(order_id, {items: updatedItems}, true)
-      }
+
+      router.replace('/warehouse');
 
     } catch (err) {
-      Alert.alert('Erro', `Erro no envio da separação para a conferência | ${err}`)
+      Alert.alert('Erro', `Erro no envio da separação para a conferência | ${err}`);
       console.error("Erro ao enviar dados da separação:", err);
-    }
-    finally{
+    } finally {
       setChecking(false);
     }
   };
@@ -212,10 +250,11 @@ export default function WarehouseBip() {
   const openEditModal = (index: number) => {
     setEditingIndex(index);
     setTempQty(String(items[index].picked));
-    setIsModalVisible(true); // Abre o modal
+    setIsModalVisible(true);
   };
 
   const saveEditedQuantity = () => {
+
     if (editingIndex !== null) {
       const updated = [...items];
       const item = updated[editingIndex];
@@ -225,7 +264,7 @@ export default function WarehouseBip() {
 
       const isExcpetionFamily = item.family === '50021' || item.family === '50001';
 
-      if(!isExcpetionFamily && Number(item.picked) > item.quantity) {
+      if (!isExcpetionFamily && Number(item.picked) > item.quantity) {
         item.picked = item.quantity;
       }
       
@@ -238,27 +277,21 @@ export default function WarehouseBip() {
     setEditingIndex(null);
   };
   
-  
   const renderItem = ({ item, index }: { item: any; index: number }) => { 
     const percentage = Number(item.quantity) > 0 ? ((Number(item.separated) / Number(item.quantity)) * 100).toFixed(0) : 0;
     const isItemDisabled = Number(item.picked) === 0; 
 
     return (
-
       <View style={styles.row}>
         <View style={styles.cell}>
           <Text style={styles.bold}>{item.product_code}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {(item.description && item.description.length >= 22) ? (
-              <>
-                  <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
-                    <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
-                  </TouchableOpacity>
-              </>
+              <TouchableOpacity onPress={() => Alert.alert('Descrição', item.description)}>
+                <Text style={{ fontSize: 10, color: '#666', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
+              </TouchableOpacity>
             ) : (
-              <>
-                <Text style={{fontSize: 10, color: '#666', flex: 1}} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
-              </>
+              <Text style={{ fontSize: 10, color: '#666', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
             )}
           </View>
           <Text style={{ color: Number(percentage) >= 100 ? '#0abb87' : '#666' }}>
@@ -298,7 +331,7 @@ export default function WarehouseBip() {
     <View style={{ flex: 1 }}>
       <TextInput autoFocus ref={inputRef} style={styles.hiddenInput} value={inputValue} showSoftInputOnFocus={false} onBlur={() => setTimeout(() => inputRef.current?.focus(), 50)} onChangeText={handleBarcodeInput} />
 
-      <Text style={styles.h1} onPress={() => {Alert.alert('Detalhes de produção', `${current.manufacture_cod} - ${current.manufacture_desc}`)}}>
+      <Text style={styles.h1} onPress={() => { Alert.alert('Detalhes de produção', `${current.manufacture_cod} - ${current.manufacture_desc}`); }}>
         O.P: <Text style={{ color: '#0abb87' }}>#{!current.isReq ? productionOrder : `REQ-${productionOrder}`}</Text>
       </Text>
 

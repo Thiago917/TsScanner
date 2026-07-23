@@ -53,6 +53,8 @@ export const ProductionOrdersProvider = ({ children }: { children: React.ReactNo
     
     const loadOrders = async () => {
         try {
+
+            // console.log(`consultando api: ${api_url}/warehouse/list`)
             const response = await axios.get(`${api_url}/warehouse/list`);
             const res = response.data;
             const ordersArr: OrderType[] = [];
@@ -87,7 +89,7 @@ export const ProductionOrdersProvider = ({ children }: { children: React.ReactNo
                     return newChecking;
                 });
             });
-
+        
         } catch (err: any) {
             Alert.alert('Erro', `Erro ao carregar pedidos de almoxarifado... ${err}`);
             console.log(err);

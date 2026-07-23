@@ -29,16 +29,22 @@ export default function CheckingList() {
   const checkLocalPendingQueue = async () => {
     try {
       const saved = await AsyncStorage.getItem('checking_queue');
-      console.log(saved)
+      console.log('[Checking List] Leitura da checking_queue:', saved ? `${saved.length} caracteres` : 'chave inexistente');
       if (saved) {
         const parsed = JSON.parse(saved);
         const pendingOps = parsed.map((item: any) => String(item.op));
+        console.log('[Checking List] Pendências reconhecidas:', {
+          total: Array.isArray(parsed) ? parsed.length : 'fila inválida',
+          ops: pendingOps,
+          itens: Array.isArray(parsed) ? parsed.map((item: any) => ({ uid: item?.uid, op: item?.op, status: item?.status })) : [],
+        });
         setLocalPendingUids(pendingOps);
       } else {
+        console.log('[Checking List] Nenhuma pendência local encontrada.');
         setLocalPendingUids([]);
       }
     } catch (err) {
-      console.log('Erro ao ler fila local no list:', err);
+      console.log('[Checking List] Erro ao ler/interpretar checking_queue:', err);
     }
   };
 
@@ -96,6 +102,13 @@ export default function CheckingList() {
             // 🧠 Valida se esta linha atual bate com alguma OP salva localmente esperando internet
             const currentOpString = !item.isReq ? String(item.order_code) : `REQ-${item.id}`;
             const isOfflinePending = localPendingUids.includes(currentOpString);
+            if (isOfflinePending) {
+              console.log('[Checking List] OP reconhecida como pendente:', {
+                orderId: item.id,
+                currentOpString,
+                localPendingUids,
+              });
+            }
 
             return (
               <View style={[styles.row, isOfflinePending && styles.rowPending]}>

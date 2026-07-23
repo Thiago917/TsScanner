@@ -37,7 +37,7 @@ export default function Login() {
     if(error) Alert.alert('Erro', `${message}`)
     
     try{
-      console.log(`Ta chamando a rota ${api_url}/login com os parametros: email: ${data}, password: ${password}`)
+      // console.log(`Ta chamando a rota ${api_url}/login com os parametros: email: ${data}, password: ${password}`)
       const response = await axios.post(`${api_url}/login`, {
         email: data,
         password: password
@@ -70,6 +70,7 @@ export default function Login() {
     }
     catch(err){
       console.log(`Error: ${err}`)
+      Alert.alert('', `${err}`)
     }
     finally{
       setLoading(false)

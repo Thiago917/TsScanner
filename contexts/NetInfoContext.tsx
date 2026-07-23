@@ -10,6 +10,20 @@ type NetInfoContextType = {
 
 const NetInfoContext = createContext<NetInfoContextType>({} as NetInfoContextType);
 
+const normalizeNetworkState = (netState: any): NetInfoContextType => {
+    const isConnected = netState?.isConnected ?? false;
+    const isInternetReachable = typeof netState?.isInternetReachable === 'boolean'
+        ? netState.isInternetReachable
+        : isConnected;
+
+    return {
+        isConnected,
+        isInternetReachable,
+        type: netState?.type ?? 'unknown',
+        loading: false,
+    };
+};
+
 export const NetInfoProvider = ({ children }: { children: React.ReactNode }) => {
     const [state, setState] = useState<NetInfoContextType>({
         isConnected: true,
@@ -19,17 +33,35 @@ export const NetInfoProvider = ({ children }: { children: React.ReactNode }) => 
     });
 
     useEffect(() => {
-        // Escuta mudanças de rede de forma global
-        const unsubscribe = NetInfo.addEventListener((netState) => {
-            setState({
-                isConnected: netState.isConnected,
-                isInternetReachable: netState.isInternetReachable,
-                type: netState.type,
-                loading: false,
+        let mounted = true;
+
+        const updateState = (netState: any) => {
+            if (!mounted) return;
+            const normalized = normalizeNetworkState(netState);
+            console.log('[NetInfo] Estado de rede atualizado:', {
+                type: normalized.type,
+                isConnected: normalized.isConnected,
+                isInternetReachable: normalized.isInternetReachable,
             });
+            setState(normalized);
+        };
+
+        console.log('[NetInfo] Consultando estado inicial da rede...');
+        NetInfo.fetch()
+            .then(updateState)
+            .catch((error) => {
+                console.log('[NetInfo] Erro ao consultar estado inicial:', error);
+                updateState({ isConnected: false, isInternetReachable: false, type: 'unknown' });
+            });
+
+        const unsubscribe = NetInfo.addEventListener((netState) => {
+            updateState(netState);
         });
 
-        return () => unsubscribe();
+        return () => {
+            mounted = false;
+            unsubscribe();
+        };
     }, []);
 
     return (
